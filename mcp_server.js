@@ -150,7 +150,7 @@ const TOOLS = [
       "Execute a chain of BindAliasPlus aliases. " +
       "The 'def' parameter is a space-separated chain with backslash for args, " +
       "e.g. 'slot\\2 wait\\1 +forward'. " +
-      "+<aliasName> basicly means enter a state, and -<aliasName> means exit a state." +
+      "basicly +<aliasName> means enter a state, and -<aliasName> means exit a state." +
       "Known aliases: " +
       "Without args: " +
       ALIAS_WITHOUT_ARGS.join(", ") +

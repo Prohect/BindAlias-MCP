@@ -1,107 +1,65 @@
 # BindAliasPlus MCP
 
-MCP stdio bridge for the [BindAliasPlus](https://github.com/Prohect/BindAliasPlus) Minecraft mod. Connects AI agents (Zed, Claude Desktop, etc.) to a running Minecraft instance, letting them query game state, take screenshots, execute aliases, and edit the mod's config file — all through the Model Context Protocol.
+MCP bridge for the [BindAliasPlus](https://github.com/Prohect/BindAliasPlus) Minecraft mod. Lets AI agents control Minecraft: query game state, take screenshots, execute aliases, and edit the mod config.
 
 ## Prerequisites
 
-- **Node.js** (runtime for the bridge)
-- **Minecraft** with the [BindAliasPlus](https://github.com/Prohect/BindAliasPlus) mod loaded and its MCP HTTP server enabled (listens on `127.0.0.1:25575`)
+- [Minecraft](https://www.minecraft.net) with the [BindAliasPlus](https://github.com/Prohect/BindAliasPlus) mod loaded
+- The mod's HTTP API enabled (listens on `127.0.0.1:25575`)
 
-## Quick Start
+## Install in Zed
 
-```bash
-node mcp_server.js
-```
-
-The server starts, writes a `.mcp_startup` marker in its directory, and waits for JSON-RPC on stdin. It speaks MCP protocol version `2024-11-05`.
-
-## Tools
-
-| Tool | Description |
-|---|---|
-| `getState` | Snapshot of current game state: screen, world, dimension, player position/rotation, health, held item (registry name, count, hotbar slot). |
-| `getScreenshot` | Trigger a native F2 screenshot, wait for the file, return it as a base64 PNG (plus path and filename). |
-| `runAlias` | Execute a registered BindAliasPlus alias. Some aliases take backslash-separated arguments (`\`). |
-| `defineAlias` | Define a new alias via `/alias` command (requires being in a world). |
-| `readCFG` | Read the raw content of `bind-alias-plus.cfg`. |
-| `writeCFG` | Overwrite `bind-alias-plus.cfg` with new content and reload it. |
-
-### Aliases Without Arguments
-
-`+attack` `-attack` `+use` `-use` `+forward` `-forward` `+back` `-back` `+left` `-left` `+right` `-right` `+jump` `-jump` `+sneak` `-sneak` `+sprint` `-sprint` `+drop` `-drop` `+screenshot` `-screenshot` `+playerList` `-playerList` `+advancements` `-advancements` `+debugOverlay` `-debugOverlay` `+openInventory` `-openInventory` `+silent` `-silent` `cyclePerspective` `swapHand` `pickItem` `toggleInventory` `reloadCFG` `unloadCFGAliases` `unloadCFGBinds` `unloadCFGVars` `unloadCFGAll` `builtinShutdown` `FPS` `TPS` `TPS2` `esc` `closeScreen`
-
-### Aliases With Arguments
-
-| Alias | Args syntax |
-|---|---|
-| `slot` | `\<1-9>` — switch hotbar slot |
-| `log` | `\<message>` — log to game console |
-| `say` | `\<message>` — send chat message |
-| `localSay` | `\<message>` — client-side only message |
-| `sendCommand` | `\<command>` — send command (spaces preserved) |
-| `alias` | `\<name>\<definition>` — define a new alias |
-| `swapSlot` | `\<slot1>\<slot2>` or `\<slot1>` — swap inventory slots (1–9 hotbar, 10–36 inv, 37–40 armor, 41 offhand) |
-| `wait` | `\<ticks>` — pause N ticks (20 ticks = 1 second) |
-| `yaw` | `\<degrees>` — rotate yaw relative |
-| `pitch` | `\<degrees>` — rotate pitch relative |
-| `setYaw` | `\<degrees>` — set absolute yaw (0=north, 90=east, 180=south) |
-| `setPitch` | `\<degrees>` — set absolute pitch (−90=up, 90=down) |
-| `var` | `\<varName>\<source>` — store value (sources: `hotbarSlot`, `pitch`, `yaw`, `itemsOfSlot0–9`, `number`) |
-| `builtinRunAlias` | `\<aliasName>` — execute another alias by name |
-| `reapply` | `\<action>` — re-assert held key (`forward`, `attack`, `use`, `back`, `left`, `right`, `jump`, `sneak`, `sprint`, `drop`, `openInventory`) |
-| `bind` | `\<key>\<definition>` — bind a key to alias definition(s) |
-| `unbind` | `\<key>` — unbind a key |
-| `+lockKey` | `\<action>` — lock a game key (e.g. `gameKey:attack`, `gameKey:use`) |
-| `-lockKey` | `\<action>` — unlock a previously locked key/alias |
-
-## MCP Client Configuration (Zed)
-
-Add to your Zed `settings.json`:
+Add to your `settings.json`:
 
 ```json
 {
   "context_servers": {
     "bind-alias-plus": {
       "command": {
-        "path": "node",
-        "args": [
-          "F:/source/BindAliasPlus-MCP/mcp_server.js"
-        ]
+        "path": "npx",
+        "args": ["-y", "bind-alias-plus-mcp"]
       }
     }
   }
 }
 ```
 
-Adjust the `args` path to match your local checkout.
+**Sandbox permission** — the server connects to the mod on `127.0.0.1`. Add it to your network allowlist if you use Zed's agent sandbox:
 
-## API Endpoints (Mod Side)
+```json
+{
+  "agent": {
+    "sandbox_permissions": {
+      "network_hosts": ["127.0.0.1"]
+    }
+  }
+}
+```
 
-The server makes HTTP requests to the mod at `http://127.0.0.1:25575`:
+## Install via CLI
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/state` | GET | Return game state JSON |
-| `/screenshot` | GET | Trigger screenshot, return base64 PNG |
-| `/runAlias` | POST | Execute alias (query params: `name`, optional `args`) |
-| `/defineAlias` | POST | Define alias (query params: `name`, `def`) |
-| `/readCFG` | GET | Read config file contents |
-| `/writeCFG` | POST | Write config file (JSON body: `{"content":"..."}`) |
+```bash
+npx bind-alias-plus-mcp
+# or globally
+npm install -g bind-alias-plus-mcp
+```
 
-## Troubleshooting
+The server speaks MCP on stdio. Point any MCP client at it.
 
-**Server won't start / Zed handshake times out**
+## Tools
 
-Check that the `.mcp_startup` file was created in the server directory. If missing, Node.js may not be in `PATH` — verify with `node --version`.
+| Tool | What it does |
+|---|---|
+| `getState` | Game state snapshot: screen, world, dimension, player pos/rot, health, held item |
+| `getScreenshot` | Trigger F2 screenshot, return as base64 PNG |
+| `runAlias` | Execute a BindAliasPlus alias (34+ argless, 18 with args) |
+| `defineAlias` | Define a new alias (requires being in a world) |
+| `readCFG` | Read `bind-alias-plus.cfg` contents |
+| `writeCFG` | Overwrite `bind-alias-plus.cfg` and reload |
 
-**Stderr (diagnostic) output**
+See `runAlias` description for full alias reference, or the [mod docs](https://github.com/Prohect/BindAliasPlus).
 
-The server writes diagnostic messages to stderr (fd 2), including startup confirmation, raw stdin chunks, and fatal errors. In Zed, these appear in the language server log (`Toggle Language Server Logs` from the command palette).
+## Related
 
-**"Cannot connect to mod"**
-
-Make sure Minecraft is running with BindAliasPlus loaded and the HTTP server active on port `25575`. The mod must be in a world (not on the title screen) for most operations.
-
-**Buffered stdout on Windows**
-
-This server uses `fs.writeSync(fd=1)` instead of `process.stdout.write()` to avoid Windows pipe buffering issues that can cause MCP initialization timeouts.
+- [BindAliasPlus mod](https://github.com/Prohect/BindAliasPlus) — the Minecraft mod this server bridges to
+- [MCP Registry](https://registry.modelcontextprotocol.io) — registered as `io.github.Prohect/bind-alias-plus-mcp`

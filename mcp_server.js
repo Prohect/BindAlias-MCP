@@ -1,0 +1,344 @@
+#!/usr/bin/env node
+/**
+ * MCP stdio bridge for BindAliasPlus mod (Node.js version).
+ *
+ * Connects to the mod's HTTP API (127.0.0.1:25575) and exposes 8 tools
+ * to AI agents via the Model Context Protocol (JSON-RPC 2.0 on stdio).
+ *
+ * Usage:
+ *     node mcp_server.js
+ *
+ * The mod must be running with the MCP HTTP server active.
+ */
+
+const http = require("http");
+
+const API_BASE = "http://127.0.0.1:25575";
+
+// Args separator: \\ (backslash in alias syntax).
+// Boolean aliases use \\1=press/hold, \\0=release.
+// Use the "args" field to pass args; do NOT embed args in "name".
+// Aliases are split into two groups: those that take arguments (pass in the
+// 'args' field using backslash separators) and those that don't.
+const ALIAS_WITHOUT_ARGS = [
+  "+attack","-attack","+use","-use","+forward","-forward",
+  "+back","-back","+left","-left","+right","-right",
+  "+jump","-jump","+sneak","-sneak","+sprint","-sprint",
+  "+drop","-drop","+screenshot","-screenshot",
+  "+playerList","-playerList","+advancements","-advancements",
+  "+debugOverlay","-debugOverlay","+openInventory","-openInventory",
+  "+silent","-silent",
+  "cyclePerspective","swapHand","pickItem","toggleInventory",
+  "reloadCFG","unloadCFGAliases","unloadCFGBinds","unloadCFGVars",
+  "unloadCFGAll","builtinShutdown",
+  "FPS","TPS","TPS2","esc","closeScreen",
+];
+const ALIAS_WITH_ARGS = [
+  "slot","log","say","localSay","sendCommand","alias",
+  "swapSlot","wait","yaw","pitch","setYaw","setPitch",
+  "var","builtinRunAlias","reapply","bind","unbind",
+  "+lockKey","-lockKey",
+];
+const ALIAS_ARGS_HELP = [
+  // name             args syntax
+  ["slot",           "\\<1-9>  switch hotbar slot  e.g. slot args=3"],
+  ["log",            "\\<message>  log to game console (debug)"],
+  ["say",            "\\<message>  send chat message"],
+  ["localSay",       "\\<message>  show client-side only"],
+  ["sendCommand",    "\\<command>  send command (spaces kept)  e.g. sendCommand\\time set day"],
+  ["alias",          "\\<name>\\<definition>  define a new alias"],
+  ["swapSlot",       "\\<slot1>\\<slot2> or \\<slot1>  swap two slots or swap with current hotbar slot; slots 1-9=hotbar,10-36=inv,37-40=armor,41=offhand"],
+  ["wait",           "\\<ticks>  pause execution for N ticks (20 ticks=1s)"],
+  ["yaw",            "\\<degrees>  rotate yaw relative"],
+  ["pitch",          "\\<degrees>  rotate pitch relative"],
+  ["setYaw",         "\\<degrees>  set absolute yaw (0=north,90=east,180=south)"],
+  ["setPitch",       "\\<degrees>  set absolute pitch (-90=up,90=down)"],
+  ["var",            "\\<varName>\\<source>  store value; sources: hotbarSlot,pitch,yaw,itemsOfSlot0-9,number"],
+  ["builtinRunAlias", "\\<aliasName>  execute another alias by name"],
+  ["reapply",        "\\<action>  re-assert held key (forward,attack,use,back,left,right,jump,sneak,sprint,drop,openInventory)"],
+  ["bind",           "\\<key>\\<definition>  bind a key to alias definition(s)"],
+  ["unbind",         "\\<key>  unbind a key"],
+  ["+lockKey",       "\\<action>  lock game key; actions: gameKey:attack,gameKey:use,gameKey:forward,... or aliasName"],
+  ["-lockKey",       "\\<action>  unlock a previously locked key/alias"],
+];
+
+const TOOLS = [
+    {
+        name: "getState",
+        description: (
+            "Get current Minecraft game state snapshot: screen class name, " +
+            "world name, dimension, player x/y/z/yaw/pitch, health, " +
+            "held item registry name + count + hotbar slot. Returns JSON."
+        ),
+        inputSchema: { type: "object", properties: {}, required: [] },
+    },
+    {
+        name: "getScreenshot",
+        description: (
+            "Trigger a Minecraft screenshot (native F2), wait for the file, " +
+            "and return it as a base64-encoded PNG image with path and name. " +
+            "Returns JSON with fields: path, name, base64."
+        ),
+        inputSchema: { type: "object", properties: {}, required: [] },
+    },
+    {
+        name: "runAlias",
+        description: (
+            "Execute a registered BindAliasPlus alias. " +
+            "Aliases without arguments (pass no 'args' field): " +
+            ALIAS_WITHOUT_ARGS.join(", ") + ". " +
+            "Aliases that take arguments (pass 'args' with backslash-separated values): " +
+            ALIAS_WITH_ARGS.join(", ") + ". " +
+            "ARG SYNTAX: " +
+            ALIAS_ARGS_HELP.map(function(a){return a[0]+": "+a[1]}).join("; ") + ". " +
+            "Parser syntax: backslash '\\' separates alias name from args; " +
+            "space separates multiple aliases in a chain; " +
+            "wrap args containing spaces in double quotes; " +
+            "use semicolon ';' instead of space for nested definitions. " +
+            'Returns JSON {"ok": true} on success.'
+        ),
+        inputSchema: {
+            type: "object",
+            properties: {
+                name: { type: "string", description: "Alias name to execute (see description for full list)." },
+                args: { type: "string", description: "Backslash-separated arguments. See ARG SYNTAX in tool description for per-alias details." },
+            },
+            required: ["name"],
+        },
+    },
+    {
+        name: "defineAlias",
+        description: (
+            "Define a new alias via the /alias command (sendCommand). " +
+            'Returns JSON {"ok": true} on success. ' +
+            "Must be in a world (not on title screen)."
+        ),
+        inputSchema: {
+            type: "object",
+            properties: {
+                name: { type: "string", description: "Alias name to create." },
+                def: { type: "string", description: "Alias definition string." },
+            },
+            required: ["name", "def"],
+        },
+    },
+    {
+        name: "readCFG",
+        description: (
+            "Read the raw content of the bind-alias-plus.cfg config file. " +
+            'Returns JSON {"content": "..."} with the file contents.'
+        ),
+        inputSchema: { type: "object", properties: {}, required: [] },
+    },
+    {
+        name: "writeCFG",
+        description: (
+            "Overwrite the bind-alias-plus.cfg config file with new content " +
+            "and reload it. Parameter 'content' is the full file text. " +
+            'Returns JSON {"ok": true}.'
+        ),
+        inputSchema: {
+            type: "object",
+            properties: {
+                content: { type: "string", description: "Full config file content to write." },
+            },
+            required: ["content"],
+        },
+    },
+];
+
+// ---- HTTP helpers ----
+
+function apiGet(path, params) {
+    const url = new URL(API_BASE + path);
+    if (params) {
+        Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    }
+    return new Promise((resolve) => {
+        http.get(url, { timeout: 10000 }, (res) => {
+            let data = "";
+            res.on("data", (chunk) => { data += chunk; });
+            res.on("end", () => {
+                try { resolve(JSON.parse(data)); }
+                catch { resolve({ error: "Invalid JSON response" }); }
+            });
+        }).on("error", (e) => {
+            resolve({ error: "Cannot connect to mod: " + e.message });
+        });
+    });
+}
+
+function apiPost(path, params, body) {
+    const url = new URL(API_BASE + path);
+    if (params) {
+        Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    }
+    const bodyStr = body ? JSON.stringify(body) : null;
+    return new Promise((resolve) => {
+        const req = http.request(url, {
+            method: "POST",
+            timeout: 10000,
+            headers: bodyStr
+                ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(bodyStr) }
+                : {},
+        }, (res) => {
+            let data = "";
+            res.on("data", (chunk) => { data += chunk; });
+            res.on("end", () => {
+                try { resolve(JSON.parse(data)); }
+                catch { resolve({ error: "Invalid JSON response" }); }
+            });
+        });
+        req.on("error", (e) => {
+            resolve({ error: "Cannot connect to mod: " + e.message });
+        });
+        if (bodyStr) req.write(bodyStr);
+        req.end();
+    });
+}
+
+// ---- MCP JSON-RPC ----
+// Use fs.writeSync(fd=1) for stdout to avoid pipe buffering on Windows.
+// process.stdout.write() can buffer when stdout is a pipe (not a TTY),
+// causing Zed's initialize handshake to time out after 60s.
+const fs = require("fs");
+function send(obj) {
+    fs.writeSync(1, JSON.stringify(obj) + "\n");
+}
+
+function makeResponse(id, result) {
+    return { jsonrpc: "2.0", id, result };
+}
+
+function makeError(id, code, message) {
+    return { jsonrpc: "2.0", id, error: { code, message } };
+}
+
+async function handleToolCall(toolName, args) {
+    switch (toolName) {
+        case "getState":
+            return apiGet("/state");
+
+        case "getScreenshot": {
+            const result = await apiGet("/screenshot");
+            if (result.base64) {
+                return {
+                    content: [
+                        { type: "image", data: result.base64, mimeType: "image/png" },
+                    ],
+                };
+            }
+            return result;
+        }
+
+        case "runAlias": {
+            const params = { name: args.name || "" };
+            if (args.args) params.args = args.args;
+            return apiPost("/runAlias", params);
+        }
+
+        case "defineAlias":
+            return apiPost("/defineAlias", {
+                name: args.name || "",
+                def: args.def || "",
+            });
+
+        case "readCFG":
+            return apiGet("/readCFG");
+
+        case "writeCFG":
+            return apiPost("/writeCFG", null, { content: args.content || "" });
+
+        default:
+            return { error: `Unknown tool: ${toolName}` };
+    }
+}
+
+// ---- Main ----
+// Use raw stdin instead of readline — on Windows pipes, readline may not
+// emit "line" events reliably when the parent process keeps stdin open.
+
+let stdinBuffer = "";
+
+function main() {
+    // Write a startup marker so we can tell if the process even starts.
+    // If this file appears, the process launched; if not, node wasn't found.
+    try { require("fs").writeFileSync(__dirname + "/.mcp_startup", Date.now().toString()); }
+    catch (_) {}
+
+    fs.writeSync(2, "[mcp_server] started, waiting for stdin...\n");
+
+    process.stdin.setEncoding("utf8");
+    process.stdin.resume();
+
+    process.stdin.on("data", (chunk) => {
+        fs.writeSync(2, "[mcp_server] received chunk: " + JSON.stringify(chunk) + "\n");
+        stdinBuffer += chunk;
+        // Process complete lines
+        let newlineIdx;
+        while ((newlineIdx = stdinBuffer.indexOf("\n")) !== -1) {
+            const line = stdinBuffer.slice(0, newlineIdx).trim();
+            stdinBuffer = stdinBuffer.slice(newlineIdx + 1);
+            if (!line) continue;
+            handleLine(line);
+        }
+    });
+
+    process.stdin.on("end", () => {
+        fs.writeSync(2, "[mcp_server] stdin ended, exiting\n");
+        process.exit(0);
+    });
+
+    process.stdin.on("error", (err) => {
+        fs.writeSync(2, "[mcp_server] stdin error: " + err.message + "\n");
+    });
+}
+
+function handleLine(line) {
+    let request;
+    try { request = JSON.parse(line); }
+    catch { return; }
+
+    const id = request.id;
+    const method = request.method || "";
+
+    if (method === "initialize") {
+        send(makeResponse(id, {
+            protocolVersion: "2024-11-05",
+            capabilities: { tools: {} },
+            serverInfo: { name: "bind-alias-plus-mcp", version: "1.0.0" },
+        }));
+    } else if (method === "tools/list") {
+        send(makeResponse(id, { tools: TOOLS }));
+    } else if (method === "tools/call") {
+        const params = request.params || {};
+        const toolName = params.name || "";
+        const args = params.arguments || {};
+
+        handleToolCall(toolName, args).then((result) => {
+            // Wrap in MCP content format if not already
+            if (!result.content && !result.error) {
+                result = {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            } else if (result.content && typeof result.content === "string") {
+                // API returns {"content": "..."} — wrap string content in array
+                result = {
+                    content: [{ type: "text", text: result.content }],
+                };
+            }
+            send(makeResponse(id, result));
+        });
+    } else if (method === "notifications/initialized") {
+        // No response for notifications
+    } else {
+        send(makeError(id, -32601, "Method not found: " + method));
+    }
+}
+
+process.on("uncaughtException", (err) => {
+    fs.writeSync(2, "[mcp_server] FATAL: " + err.message + "\n" + err.stack + "\n");
+    process.exit(1);
+});
+
+main();

@@ -2,7 +2,7 @@
 /**
  * MCP stdio bridge for BindAliasPlus mod (Node.js version).
  *
- * Connects to the mod's HTTP API (127.0.0.1:25575) and exposes 8 tools
+ * Connects to the mod's HTTP API (127.0.0.1:25575) and exposes 6 tools
  * to AI agents via the Model Context Protocol (JSON-RPC 2.0 on stdio).
  *
  * Usage:
@@ -17,9 +17,9 @@ const API_BASE = "http://127.0.0.1:25575";
 
 // Args separator: \\ (backslash in alias syntax).
 // Boolean aliases use \\1=press/hold, \\0=release.
-// Use the "args" field to pass args; do NOT embed args in "name".
-// Aliases are split into two groups: those that take arguments (pass in the
-// 'args' field using backslash separators) and those that don't.
+// The 'def' parameter accepts a space-separated chain of aliases,
+// with backslash for args, e.g. 'slot\\2 wait\\1 +forward'.
+// Known aliases are split into two groups shown below.
 const ALIAS_WITHOUT_ARGS = [
   "+attack","-attack","+use","-use","+forward","-forward",
   "+back","-back","+left","-left","+right","-right",
@@ -84,26 +84,27 @@ const TOOLS = [
     {
         name: "runAlias",
         description: (
-            "Execute a registered BindAliasPlus alias. " +
-            "Aliases without arguments (pass no 'args' field): " +
-            ALIAS_WITHOUT_ARGS.join(", ") + ". " +
-            "Aliases that take arguments (pass 'args' with backslash-separated values): " +
-            ALIAS_WITH_ARGS.join(", ") + ". " +
+            "Execute a chain of BindAliasPlus aliases. " +
+            "The 'def' parameter is a space-separated chain with backslash for args, " +
+            "e.g. 'slot\\2 wait\\1 +forward'. " +
+            "Known aliases: " +
+            "Without args: " + ALIAS_WITHOUT_ARGS.join(", ") + ". " +
+            "With args: " + ALIAS_WITH_ARGS.join(", ") + ". " +
             "ARG SYNTAX: " +
             ALIAS_ARGS_HELP.map(function(a){return a[0]+": "+a[1]}).join("; ") + ". " +
-            "Parser syntax: backslash '\\' separates alias name from args; " +
-            "space separates multiple aliases in a chain; " +
-            "wrap args containing spaces in double quotes; " +
-            "use semicolon ';' instead of space for nested definitions. " +
+            "NOTE: each runAlias call is independent — do NOT spread a timed " +
+            "sequence across multiple tool calls (timing between calls is unpredictable). " +
+            "Instead, chain with 'wait' inside a single call. " +
+            "runAlias returns immediately; it does NOT wait for the chain to finish. " +
+            "Use 'getState' after a wait in the chain to verify results. " +
             'Returns JSON {"ok": true} on success.'
         ),
         inputSchema: {
             type: "object",
             properties: {
-                name: { type: "string", description: "Alias name to execute (see description for full list)." },
-                args: { type: "string", description: "Backslash-separated arguments. See ARG SYNTAX in tool description for per-alias details." },
+                def: { type: "string", description: "Alias chain definition. Space-separated aliases, backslash for args: e.g. 'slot\\2 wait\\1 +forward'." },
             },
-            required: ["name"],
+            required: ["def"],
         },
     },
     {
@@ -232,8 +233,14 @@ async function handleToolCall(toolName, args) {
         }
 
         case "runAlias": {
-            const params = { name: args.name || "" };
-            if (args.args) params.args = args.args;
+            const params = {};
+            if (args.def) {
+                params.def = args.def;
+            } else {
+                // legacy: name + args
+                params.name = args.name || "";
+                if (args.args) params.args = args.args;
+            }
             return apiPost("/runAlias", params);
         }
 

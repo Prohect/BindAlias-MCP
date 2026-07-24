@@ -1,7 +1,7 @@
 {
   "name": "bind-alias-plus-mcp",
-  "version": "1.0.0",
-  "mcpName": "io.github.prohect/bind-alias-plus",
+  "version": "1.0.1",
+  "mcpName": "io.github.prohect/bind-alias-plus-mcp",
   "description": "MCP stdio bridge for the BindAliasPlus Minecraft mod — query game state, take screenshots, execute aliases, and edit config",
   "main": "mcp_server.js",
   "bin": {

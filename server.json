@@ -1,8 +1,8 @@
 {
   "name": "BindAliasPlus MCP",
-  "slug": "io.github.prohect/bind-alias-plus",
+  "slug": "io.github.prohect/bind-alias-plus-mcp",
   "description": "MCP stdio bridge for the BindAliasPlus Minecraft mod. Lets AI agents query game state, take screenshots, execute aliases, and edit the mod config — all through the Model Context Protocol.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "packages": [
     {
       "registryType": "npm",

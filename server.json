@@ -1,13 +1,15 @@
 {
-  "name": "BindAliasPlus MCP",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.prohect/bind-alias-plus-mcp",
   "slug": "io.github.prohect/bind-alias-plus-mcp",
-  "description": "MCP stdio bridge for the BindAliasPlus Minecraft mod. Lets AI agents query game state, take screenshots, execute aliases, and edit the mod config — all through the Model Context Protocol.",
+  "description": "MCP bridge for BindAliasPlus Minecraft mod: game state, screenshots, alias execution, and config editing.",
   "version": "1.0.1",
   "packages": [
     {
       "registryType": "npm",
       "packageName": "bind-alias-plus-mcp",
-      "entrypoint": "bind-alias-plus-mcp"
+      "entrypoint": "bind-alias-plus-mcp",
+      "identifier": "bind-alias-plus-mcp"
     }
   ],
   "runtimeDependencies": [
@@ -19,27 +21,27 @@
   "tools": [
     {
       "name": "getState",
-      "description": "Get current Minecraft game state snapshot: screen class name, world name, dimension, player x/y/z/yaw/pitch, health, held item registry name + count + hotbar slot. Returns JSON."
+      "description": "Get Minecraft game state: screen, world, dimension, player pos/rot, health, held item. Returns JSON."
     },
     {
       "name": "getScreenshot",
-      "description": "Trigger a Minecraft screenshot (native F2), wait for the file, and return it as a base64-encoded PNG image with path and name. Returns JSON with fields: path, name, base64."
+      "description": "Take a Minecraft screenshot and return it as a base64-encoded PNG with path and name."
     },
     {
       "name": "runAlias",
-      "description": "Execute a registered BindAliasPlus alias. Supports 34+ built-in aliases without args (+attack, +forward, cyclePerspective, etc.) and 18 aliases with backslash-separated arguments (slot, say, sendCommand, yaw, pitch, wait, bind, etc.). Returns JSON {ok: true} on success."
+      "description": "Execute a registered BindAliasPlus alias. 34+ argless + 18 arg-based aliases. Returns {ok: true}."
     },
     {
       "name": "defineAlias",
-      "description": "Define a new alias via the /alias command (sendCommand). Requires being in a world (not on title screen). Returns JSON {ok: true} on success."
+      "description": "Define a new alias via /alias command. Requires being in a world. Returns {ok: true}."
     },
     {
       "name": "readCFG",
-      "description": "Read the raw content of the bind-alias-plus.cfg config file. Returns JSON {content: '...'} with the file contents."
+      "description": "Read the raw content of bind-alias-plus.cfg. Returns {content: '...'}."
     },
     {
       "name": "writeCFG",
-      "description": "Overwrite the bind-alias-plus.cfg config file with new content and reload it. Parameter 'content' is the full file text. Returns JSON {ok: true}."
+      "description": "Overwrite bind-alias-plus.cfg with new content and reload it. Returns {ok: true}."
     }
   ],
   "homepage": "https://github.com/Prohect/BindAliasPlus-MCP",

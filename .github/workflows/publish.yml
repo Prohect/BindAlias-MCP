@@ -25,5 +25,8 @@ jobs:
       - name: Validate server.json
         run: go run github.com/modelcontextprotocol/registry/cmd/publisher@latest validate server.json
 
+      - name: Login via GitHub OIDC
+        run: go run github.com/modelcontextprotocol/registry/cmd/publisher@latest login github-oidc
+
       - name: Publish to MCP Registry
-        run: go run github.com/modelcontextprotocol/registry/cmd/publisher@latest publish server.json
+        run: go run github.com/modelcontextprotocol/registry/cmd/publisher@latest publish server.json --auth github-oidc

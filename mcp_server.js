@@ -68,7 +68,7 @@ const TOOLS = [
         description: (
             "Get current Minecraft game state snapshot: screen class name, " +
             "world name, dimension, player x/y/z/yaw/pitch, health, " +
-            "held item registry name + count + hotbar slot. Returns JSON."
+            "held item registry name + count + hotbar slot, adds slots info if there's any container screen.  Returns JSON."
         ),
         inputSchema: { type: "object", properties: {}, required: [] },
     },
@@ -109,7 +109,7 @@ const TOOLS = [
     {
         name: "defineAlias",
         description: (
-            "Define a new alias via the /alias command (sendCommand). " +
+            "Define a new alias. " +
             'Returns JSON {"ok": true} on success. ' +
             "Must be in a world (not on title screen)."
         ),
@@ -126,6 +126,7 @@ const TOOLS = [
         name: "readCFG",
         description: (
             "Read the raw content of the bind-alias-plus.cfg config file. " +
+            "the cfg is auto loaded. " +
             'Returns JSON {"content": "..."} with the file contents.'
         ),
         inputSchema: { type: "object", properties: {}, required: [] },

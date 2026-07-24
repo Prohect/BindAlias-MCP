@@ -2,7 +2,7 @@
 /**
  * MCP stdio bridge for BindAliasPlus mod (Node.js version).
  *
- * Connects to the mod's HTTP API (127.0.0.1:25575) and exposes 6 tools
+ * Connects to the mod's HTTP API (127.0.0.1:25575) and exposes 7 tools
  * to AI agents via the Model Context Protocol (JSON-RPC 2.0 on stdio).
  *
  * Usage:
@@ -221,6 +221,15 @@ const TOOLS = [
       required: ["content"],
     },
   },
+  {
+    name: "getLogDiff",
+    description:
+      "Get new game-log messages since the last getLogDiff call. " +
+      "Returns messages that appeared since the previous invocation (or since startup on first call). " +
+      "Use this to check command feedback, error messages, chat output, etc. " +
+      "Returns JSON {\"messages\": \"...\", \"count\": N}.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
 ];
 
 // ---- HTTP helpers ----
@@ -358,6 +367,9 @@ async function handleToolCall(toolName, args) {
 
     case "writeCFG":
       return apiPost("/writeCFG", null, { content: args.content || "" });
+
+    case "getLogDiff":
+      return apiGet("/logDiff");
 
     default:
       return { error: `Unknown tool: ${toolName}` };

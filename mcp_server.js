@@ -149,12 +149,22 @@ const TOOLS = [
 ];
 
 // ---- HTTP helpers ----
+// Use encodeURIComponent (spaces → %20) to match the mod's decodePercent,
+// which does NOT convert '+' to space.
+
+function buildUrl(path, params) {
+    let url = API_BASE + path;
+    if (params) {
+        const qs = Object.entries(params)
+            .map(function (e) { return encodeURIComponent(e[0]) + '=' + encodeURIComponent(e[1]); })
+            .join('&');
+        url += '?' + qs;
+    }
+    return url;
+}
 
 function apiGet(path, params) {
-    const url = new URL(API_BASE + path);
-    if (params) {
-        Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-    }
+    const url = buildUrl(path, params);
     return new Promise((resolve) => {
         http.get(url, { timeout: 10000 }, (res) => {
             let data = "";
@@ -170,10 +180,7 @@ function apiGet(path, params) {
 }
 
 function apiPost(path, params, body) {
-    const url = new URL(API_BASE + path);
-    if (params) {
-        Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-    }
+    const url = buildUrl(path, params);
     const bodyStr = body ? JSON.stringify(body) : null;
     return new Promise((resolve) => {
         const req = http.request(url, {

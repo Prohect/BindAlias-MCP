@@ -16,21 +16,9 @@ Add to your `settings.json`:
   "context_servers": {
     "bind-alias-plus": {
       "command": {
-        "path": "npx",
-        "args": ["-y", "bind-alias-plus-mcp"]
+        "path": "<[npx]|[<<path_to>node.exe>>]",
+        "args": ["<<path_to>BindAliasPlus-MCP/mcp_server.js>"]
       }
-    }
-  }
-}
-```
-
-**Sandbox permission** — the server connects to the mod on `127.0.0.1`. Add it to your network allowlist if you use Zed's agent sandbox:
-
-```json
-{
-  "agent": {
-    "sandbox_permissions": {
-      "network_hosts": ["127.0.0.1"]
     }
   }
 }

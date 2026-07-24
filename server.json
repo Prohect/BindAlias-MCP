@@ -9,7 +9,10 @@
       "registryType": "npm",
       "packageName": "bind-alias-plus-mcp",
       "entrypoint": "bind-alias-plus-mcp",
-      "identifier": "bind-alias-plus-mcp"
+      "identifier": "bind-alias-plus-mcp",
+      "transport": {
+        "type": "stdio"
+      }
     }
   ],
   "runtimeDependencies": [
@@ -47,7 +50,8 @@
   "homepage": "https://github.com/Prohect/BindAliasPlus-MCP",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Prohect/BindAliasPlus-MCP.git"
+    "url": "https://github.com/Prohect/BindAliasPlus-MCP",
+    "source": "github"
   },
   "authors": [
     {

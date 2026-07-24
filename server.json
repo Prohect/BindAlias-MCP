@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.prohect/bind-alias-plus-mcp",
-  "slug": "io.github.prohect/bind-alias-plus-mcp",
+  "name": "io.github.Prohect/bind-alias-plus-mcp",
+  "slug": "io.github.Prohect/bind-alias-plus-mcp",
   "description": "MCP bridge for BindAliasPlus Minecraft mod: game state, screenshots, aliases, and config editing.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "packages": [
     {
       "registryType": "npm",

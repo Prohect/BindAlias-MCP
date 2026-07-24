@@ -1,0 +1,56 @@
+{
+  "name": "BindAliasPlus MCP",
+  "slug": "io.github.prohect/bind-alias-plus",
+  "description": "MCP stdio bridge for the BindAliasPlus Minecraft mod. Lets AI agents query game state, take screenshots, execute aliases, and edit the mod config — all through the Model Context Protocol.",
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "packageName": "bind-alias-plus-mcp",
+      "entrypoint": "bind-alias-plus-mcp"
+    }
+  ],
+  "runtimeDependencies": [
+    {
+      "name": "Minecraft with BindAliasPlus mod",
+      "url": "https://github.com/Prohect/BindAliasPlus"
+    }
+  ],
+  "tools": [
+    {
+      "name": "getState",
+      "description": "Get current Minecraft game state snapshot: screen class name, world name, dimension, player x/y/z/yaw/pitch, health, held item registry name + count + hotbar slot. Returns JSON."
+    },
+    {
+      "name": "getScreenshot",
+      "description": "Trigger a Minecraft screenshot (native F2), wait for the file, and return it as a base64-encoded PNG image with path and name. Returns JSON with fields: path, name, base64."
+    },
+    {
+      "name": "runAlias",
+      "description": "Execute a registered BindAliasPlus alias. Supports 34+ built-in aliases without args (+attack, +forward, cyclePerspective, etc.) and 18 aliases with backslash-separated arguments (slot, say, sendCommand, yaw, pitch, wait, bind, etc.). Returns JSON {ok: true} on success."
+    },
+    {
+      "name": "defineAlias",
+      "description": "Define a new alias via the /alias command (sendCommand). Requires being in a world (not on title screen). Returns JSON {ok: true} on success."
+    },
+    {
+      "name": "readCFG",
+      "description": "Read the raw content of the bind-alias-plus.cfg config file. Returns JSON {content: '...'} with the file contents."
+    },
+    {
+      "name": "writeCFG",
+      "description": "Overwrite the bind-alias-plus.cfg config file with new content and reload it. Parameter 'content' is the full file text. Returns JSON {ok: true}."
+    }
+  ],
+  "homepage": "https://github.com/Prohect/BindAliasPlus-MCP",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Prohect/BindAliasPlus-MCP.git"
+  },
+  "authors": [
+    {
+      "name": "Prohect"
+    }
+  ],
+  "license": "MIT"
+}

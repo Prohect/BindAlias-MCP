@@ -75,9 +75,8 @@ const TOOLS = [
     {
         name: "getScreenshot",
         description: (
-            "Trigger a Minecraft screenshot (native F2), wait for the file, " +
-            "and return it as a base64-encoded PNG image with path and name. " +
-            "Returns JSON with fields: path, name, base64."
+            "Trigger a immediately Minecraft screenshot. " +
+            "Returns that screenshot. "
         ),
         inputSchema: { type: "object", properties: {}, required: [] },
     },

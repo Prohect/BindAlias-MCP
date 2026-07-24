@@ -1,0 +1,31 @@
+{
+  "name": "bind-alias-plus-mcp",
+  "version": "1.0.0",
+  "mcpName": "io.github.prohect/bind-alias-plus",
+  "description": "MCP stdio bridge for the BindAliasPlus Minecraft mod — query game state, take screenshots, execute aliases, and edit config",
+  "main": "mcp_server.js",
+  "bin": {
+    "bind-alias-plus-mcp": "mcp_server.js"
+  },
+  "files": [
+    "mcp_server.js",
+    "README.md"
+  ],
+  "keywords": [
+    "mcp",
+    "minecraft",
+    "bindaliasplus",
+    "model-context-protocol",
+    "ai",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Prohect/BindAliasPlus-MCP.git"
+  },
+  "license": "MIT",
+  "author": "Prohect <prohect@foxmail.com>",
+  "engines": {
+    "node": ">=14"
+  }
+}

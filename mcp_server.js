@@ -31,11 +31,11 @@ const API_BASE = "http://127.0.0.1:25575";
 const ALIAS_RULES = [
   "CHAIN SYNTAX: 'def' is a space-separated chain of alias calls, and a backslash separates an alias name from its args (and arg from arg), e.g. 'slot\\2 wait\\1 +forward swapSlot\\2\\c3'.",
   'QUOTING: spaces split the chain, so a multi-word argument must be wrapped in double quotes with the opening quote right after the backslash arg-divider: say\\"hello world" or sendCommand\\"time set day".',
-  "NESTING: in alias, bind and unbind args, ';' converts to a real space — write ';' instead of spaces to keep a nested chain intact, e.g. 'bind\\g;+forward;wait\\20;-forward'. Elsewhere ';' is literal.",
+  "NESTING: in alias's args, ';' converts to a real space — write ';' instead of spaces to keep a nested chain intact, e.g. 'alias\\newAlias;+forward;wait\\20;-forward'. Elsewhere ';' is literal.",
   "SILENT FAILURES: misspelled names and bad args are skipped silently (runAlias still returns ok) — verify with getLogDiff / getState / getScreenshot.",
   "DETERMINISM: the host injects no physical input — state changes come only from your chains or game logic, so held keys behave exactly as vanilla and screens change only from your chains or game events (e.g. death).",
-  "TIMING: wait\\N defers the rest of the chain by N ticks (20/s default); runAlias returns immediately without waiting. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\\"tick rate 1\") an observe->reason->react cycle costs ~8 ticks, so steps spread across calls — and keys held between calls — stay predictable.",
-  "RELEASE RULE: +x persists until -x, across tool calls and screen transitions. Held states re-fire their press action whenever a screen closes and the cursor re-grabs (a lingering +openInventory re-opens the inventory you just closed). Release when the effect should stop; one-shot keys right after press: '+screenshot wait\\1 -screenshot'.",
+  "TIMING: wait\\N defers the rest of the chain by N ticks (20/s default); runAlias returns immediately without waiting chain of alias done. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\\"tick rate 1\") an observe->reason->react cycle costs low ticks, so steps spread across calls — and keys held between calls — could stay predictable.",
+  "RELEASE RULE: +x persists until -x, across tool calls and screen transitions. Held states re-fire their press action whenever a screen closes and the cursor re-grabs (a lingering +openInventory re-opens the inventory you just closed). Release when the effect should stop; one-shot keys right after press: '+advancements wait\\1 -advancements'.",
   "SCREENS: while any GUI screen is open, +attack/+use presses are suppressed (releases still work) and +openInventory does nothing. While a text-input screen is open (chat, sign, book, command block), key-like presses are suppressed.",
   "VARIABLES: numbers stored via the var alias can be used as numeric args anywhere (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot ... slot\\s'.",
 ];
@@ -50,60 +50,57 @@ const KEY_ALIASES = [
   "+sprint / -sprint — hold sprint",
   "+drop / -drop — press drops one item of the held stack; hold to keep dropping. In a container screen drops from the hovered slot (inventory screen: hover rests on slot 14). Stack split: drop part of a stack, then swapSlot the remainder into a container slot so the piles won't re-merge",
   "+playerList / -playerList — hold to show the online-player (Tab) overlay",
-  "+screenshot — screenshot on press (F2); release right after (RELEASE RULE)",
-  "+advancements — open the advancements screen; release right after (RELEASE RULE)",
+  "+advancements / -advancements — toggle the advancements screen, -advancements has no toggle effect; release right after (RELEASE RULE)",
 ];
 
 // SWITCH aliases — boolean state: +x = ON, -x = OFF. Never toggles.
 const SWITCH_ALIASES = [
   "+openInventory / -openInventory — open the player inventory (no-op if another screen is open) / close the current container screen",
   "+debugOverlay / -debugOverlay — show / hide the F3 debug overlay",
-  "+silent / -silent — suppress / restore mod feedback messages in chat (game log unaffected)",
-  "+freeCursor / -freeCursor — (dev) keep the OS cursor free while the game acts grabbed; camera driven only by yaw/pitch aliases",
-  "+lockKey\\target / -lockKey\\target — block / unblock physical input for a game key (gameKey:attack/use/forward/back/left/right/jump/sneak/sprint) or all keys bound to a custom alias name. Auto-restored on disconnect",
+  "+silent / -silent — suppress / restore mod feedback messages in chat",
+  "+freeCursor / -freeCursor — (dev) keep the OS cursor free from the game, bypass some vanllia logic guards for agent experience; camera driven only by yaw/pitch aliases",
 ];
 
 // ACTION aliases — one-shot calls, no +/- form.
 const ACTION_ALIASES = [
   "esc — close the current screen; if none is open, toggle the pause menu",
-  "closeScreen — close the current screen only (never opens the pause menu)",
+  "closeScreen — close the current screen if there is one",
   "cyclePerspective — cycle camera: FPS -> TPS -> TPS2",
   "FPS / TPS / TPS2 — set camera: first person / third-person back / third-person front",
-  "toggleInventory — open the inventory if closed, close it if open (prefer the predictable +openInventory / -openInventory switch)",
-  "swapHand — swap main hand and offhand items (F)",
-  "pickItem — pick-block the targeted block/entity (middle click)",
+  "toggleInventory — open the inventory if closed, close it if open",
+  "swapHand — swap main hand and offhand items",
+  "pickItem — select the hotbar slot if one matches the targeted block/entity, otherwise try move an item stack that matches the targeted block/entity in your inventory to the selected slot",
   "reloadCFG — reload the .cfg file",
-  "unloadCFGAliases / unloadCFGBinds / unloadCFGVars / unloadCFGAll — remove aliases / key binds / variables previously autoloaded from the cfg (runtime-created ones are kept)",
-  "builtinShutdown — quit the game cleanly",
+  "unloadCFGAliases / unloadCFGVars / unloadCFGAll — remove aliases / variables previously autoloaded from the cfg (runtime-created ones are kept)",
+  "builtinShutdown — shut the game down",
 ];
 
 // COMMAND aliases — take arguments (backslash-separated).
 const COMMAND_ALIASES = [
   "slot\\1-9 — select hotbar slot (works even with a screen open)",
-  "wait\\ticks — defer the rest of the chain by N ticks",
+  "wait\\ticks — defer the rest of the chain by N ticks, wait\\0 defer that to next tick",
   "yaw\\deg / pitch\\deg — rotate the camera by relative degrees",
   "setYaw\\deg — absolute yaw: 0=south(+Z), 90=west(-X), 180/-180=north(-Z), -90=east(+X)",
   "setPitch\\deg — absolute pitch: -90=up, 0=horizon, 90=down",
-  "swapSlot\\a\\b or swapSlot\\a — swap two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand; cN = Nth slot of the open container menu (getState lists c-indices). Works while a container is open. Examples: swapSlot\\1\\9, swapSlot\\1\\c2",
+  "swapSlot\\a\\b or swapSlot\\a — swap two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand; cN = Nth slot of the open container menu (getState lists c-indices), works while a container is open. Examples: swapSlot\\1\\9, swapSlot\\1\\c2",
   "say\\text — send a chat message to the server",
   "localSay\\text — client-side-only chat message (never sent)",
   "sendCommand\\cmd — run a server command (no leading slash)",
   "log\\text — append a line to the game log (read it back with getLogDiff)",
-  "var\\name\\source — store a number for use as an arg. sources: hotbarSlot, pitch, yaw, itemsOfSlot0-9 (0=offhand, 1-9=hotbar), or a literal number",
-  "alias\\\"name definition...\" — define an alias from inside a chain (one quoted arg, or ';' as space — NESTING). Prefer the defineAlias tool",
-  "builtinRunAlias\\name — run a registered alias by name (extra \\args allowed)",
-  "reapply\\action — re-assert a held key after a screen transition. actions: attack,use,forward,back,left,right,jump,sneak,sprint,drop,openInventory,playerList",
-  "bind\\key\\definition / unbind\\key — bind a physical key to a chain: press runs it, release runs its auto-opposite (+x -> -x). If the definition is exactly an existing alias name, binds that alias and its +- counterpart. Keys: a-z, 0-9, f1-f12, space, ...; mouse1/2/3 = left/right/middle. (';' = space inside the definition — NESTING)",
+  "var\\name\\source — store a number for use as an arg. sources: hotbarSlot, pitch, yaw, itemsOfSlot0-9 (0=offhand, 1-9=hotbar) (stack count), or a literal number",
+  "alias\\\"name definition...\" — define an alias from inside a chain (one quoted arg, or ';' as space — NESTING). Prefer the defineAlias tool if you dont need dynamic alias definitions",
+  "builtinRunAlias\\name — run a registered alias by name (extra \\args allowed, do not support inline chain or alias definition)",
+  "reapply\\action — re-assert a held key after a screen transition. actions: attack,use,forward,back,left,right,jump,sneak,sprint,drop,openInventory,playerList. Most actions could work to beat the vanllia releaseAll() on setScreen event (make sure reapply is deferred after the setScreen event), +attack and +use have builtin guard to avoid the bypass for safety",
 ];
 
 const RUNALIAS_DESCRIPTION =
   "Execute a chain of BindAliasPlus aliases (key/macro automation inside the running game). " +
   ALIAS_RULES.join(" ") +
-  " KEY ALIASES (+x hold key, -x release): " +
+  " KEY ALIASES: " +
   KEY_ALIASES.join("; ") +
-  ". SWITCH ALIASES (+x ON, -x OFF; never toggles): " +
+  ". SWITCH ALIASES (+x ON, -x OFF): " +
   SWITCH_ALIASES.join("; ") +
-  ". ACTION ALIASES (one-shot, no +/- form): " +
+  ". ACTION ALIASES (one-shot): " +
   ACTION_ALIASES.join("; ") +
   ". COMMAND ALIASES (backslash separates args): " +
   COMMAND_ALIASES.join("; ") +
@@ -113,10 +110,10 @@ const TOOLS = [
   {
     name: "getState",
     description:
-      "Get a snapshot of the current game state as JSON: open screen class name (null = in-game HUD), " +
+      "Get a snapshot of the current game state: open screen class name (null = in-game HUD), " +
       "ticks since world join, world/server name, dimension, player x/y/z/yaw/pitch, health, " +
       "held item registry name + count, selected hotbar slot (1-9). " +
-      "When a container screen is open, also returns a 'container' section: " +
+      "When a container screen is open, also patchs a 'container' section: " +
       "items[] whose 'index' is directly usable as a swapSlot argument (a number 1-41 for player-inventory slots, " +
       "or a 'cN' string for container-menu slots), a 'grid' ASCII map of the container slots " +
       "('#' empty, '$' occupied, ' ' no slot) with aligned per-cell c-indices in 'cells', " +
@@ -173,7 +170,6 @@ const TOOLS = [
     description:
       "Read the raw text of the bind-alias-plus.cfg config file, returned as plain text. The cfg is auto-loaded on world join " +
       "(and by reloadCFG / writeCFG). One command per line: alias <name> <definition>, " +
-      "bind <key> <definition>, bindByAliasName <key> <aliasName>, unbind <key>, " +
       "var <name> <source>, runAlias <aliasName>; '#' starts a comment, a leading '/' is optional.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },

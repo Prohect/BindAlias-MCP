@@ -25,11 +25,11 @@ const API_BASE = "http://127.0.0.1:25575";
 // Core syntax/semantics. READ THESE FIRST — most failures come from
 // ignoring the quoting rule or assuming errors are reported.
 const ALIAS_SYNTAX = [
-  "CHAIN SYNTAX: 'def' is a space-separated chain of alias calls, and a backslash separates an alias name from its args (and arg from arg), e.g. 'slot\\2 wait\\1 +forward'.",
-  'QUOTING (critical): spaces split the chain, so a multi-word argument must be wrapped in double quotes with the opening quote right after the backslash arg-divider: say\\"hello world" or sendCommand\\"time set day". Write the alias-language form exactly as shown — the bridge passes the def to the mod verbatim (as-is) and your tool framework handles JSON encoding.',
-  "FAILURES ARE SILENT: a misspelled or nonexistent alias name is ignored without any error, and runAlias still returns ok. When something didn't work, call getLogDiff to see the game log.",
-  "+name presses/holds a key (enter state), -name releases it (exit state). Movement keys (+forward, +sprint, ...) are meant to be held; remember to release them when done.",
-  "MOMENTARY KEYS MUST BE RELEASED: a still-held key is re-asserted every time a screen closes and the cursor re-grabs, re-firing its action. One-shot pattern: '+screenshot wait\\1 -screenshot'.",
+  "CHAIN SYNTAX: 'def' is a space-separated chain of alias calls, and a backslash separates an alias name from its args (and arg from arg), e.g. 'slot\\2 wait\\1 +forward swapSlot\\2\\c3'.",
+  'QUOTING: spaces split the chain, so a multi-word argument must be wrapped in double quotes with the opening quote right after the backslash arg-divider: say\\"hello world" or sendCommand\\"time set day".',
+  "misspelled alias name is skipped silently during dynamic-parse-execution.",
+  "+name presses/holds a key (enter state), -name releases it (exit state). Movement keys (+forward, +sprint, ...) are meant to be held; it's always safe to release those that cause unpredictable behavior with unknown activation time when a chain of alias done.",
+  "KEYBIND SIMULATION ALIASES NEEDS BE RELEASED: a still-held key is re-asserted every time a screen closes and the cursor re-grabs, re-firing its action. One-shot pattern: '+screenshot wait\\1 -screenshot'.",
   "wait\\N defers the REST of the chain by N ticks (20 ticks = 1 second). runAlias returns immediately; it does NOT wait for deferred parts. Chain all time-sensitive steps inside ONE runAlias call — never spread a timed sequence across multiple tool calls (inter-call timing is unpredictable). Use getState/getScreenshot/getLogDiff after enough real time to verify the result.",
   "VARIABLES: numbers stored via the var alias can be used as numeric args anywhere (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot ... slot\\s'.",
   "SCREENS: while any GUI screen is open, +attack/+use presses are suppressed (releases still work) and +openInventory does nothing. While a text-input screen is open (chat, sign, book, command block), all key-like presses are suppressed.",

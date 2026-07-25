@@ -25,10 +25,10 @@ const API_BASE = "http://127.0.0.1:25575";
 // ignoring the quoting rule or assuming errors are reported.
 const ALIAS_SYNTAX = [
   "CHAIN SYNTAX: 'def' is a space-separated chain of alias calls, and a backslash separates an alias name from its args (and arg from arg), e.g. 'slot\\2 wait\\1 +forward'.",
-  "QUOTING (critical): spaces split the chain, so any argument containing spaces MUST be wrapped in double quotes, e.g. say\"hello world\" or sendCommand\"time set day\". Without quotes only the FIRST word reaches the alias and the remaining words are parsed as more alias names (silently ignored).",
+  "QUOTING (critical): spaces split the chain, so a multi-word argument must be wrapped in double quotes with the opening quote right after the backslash arg-divider: say\\\"hello world\" or sendCommand\\\"time set day\". Write the alias-language form exactly as shown — the bridge passes the def to the mod verbatim (as-is) and your tool framework handles JSON encoding.",
   "FAILURES ARE SILENT: a misspelled or nonexistent alias name is ignored without any error, and runAlias still returns ok. When something didn't work, call getLogDiff to see the game log.",
   "+name presses/holds a key (enter state), -name releases it (exit state). Movement keys (+forward, +sprint, ...) are meant to be held; remember to release them when done.",
-  "MOMENTARY KEYS MUST BE RELEASED: a still-held key is re-asserted every time a screen closes and the cursor re-grabs, so e.g. +advancements left held re-opens the advancements screen on every closeScreen. Pattern for one-shots: '+screenshot wait\\1 -screenshot'.",
+  "MOMENTARY KEYS MUST BE RELEASED: a still-held key is re-asserted every time a screen closes and the cursor re-grabs, re-firing its action. One-shot pattern: '+screenshot wait\\1 -screenshot'.",
   "wait\\N defers the REST of the chain by N ticks (20 ticks = 1 second). runAlias returns immediately; it does NOT wait for deferred parts. Chain all time-sensitive steps inside ONE runAlias call — never spread a timed sequence across multiple tool calls (inter-call timing is unpredictable). Use getState/getScreenshot/getLogDiff after enough real time to verify the result.",
   "VARIABLES: numbers stored via the var alias can be used as numeric args anywhere (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot ... slot\\s'.",
   "SCREENS: while any GUI screen is open, +attack/+use presses are suppressed (releases still work) and +openInventory does nothing. While a text-input screen is open (chat, sign, book, command block), all key-like presses are suppressed.",
@@ -70,12 +70,12 @@ const ALIAS_WITH_ARGS = [
   "setYaw\\deg — absolute yaw: 0=south(+Z), 90=west(-X), 180/-180=north(-Z), -90=east(+X)",
   "setPitch\\deg — absolute pitch: -90=straight up, 0=horizon, 90=straight down",
   "swapSlot\\a\\b or swapSlot\\a — swap two item stacks (1-arg form swaps with the currently selected hotbar slot). Player slots: 1-9=hotbar, 10-36=inventory, 37=feet(boots), 38=legs(leggings), 39=chest(chestplate), 40=head(helmet), 41=offhand. cN = Nth slot (1-based) of the open container menu (chest, crafting table, furnace, anvil, ...; getState lists these indices). Hotbar/offhand swaps work even while a container is open. Examples: swapSlot\\1\\9, swapSlot\\1\\c2 (hotbar 1 into crafting-grid slot 2)",
-  "say\\text — send a chat message to the server; quote spaces: say\"hi all\"",
-  "localSay\\text — client-side-only chat message (never sent); quote spaces",
-  "sendCommand\\cmd — run a server command (no leading slash); quote spaces: sendCommand\"time set day\"",
-  "log\\text — append a line to the game log (read it back with getLogDiff); quote spaces",
+  "say\\text — send a chat message to the server; quote multi-word text: say\\\"hi all\"",
+  "localSay\\text — client-side-only chat message (never sent); quote spaces: localSay\\\"hi all\"",
+  "sendCommand\\cmd — run a server command (no leading slash); quote spaces: sendCommand\\\"time set day\"",
+  "log\\text — append a line to the game log (read it back with getLogDiff); quote spaces: log\\\"some text\"",
   "var\\name\\source — store a number for later use as an arg. sources: hotbarSlot (1-9), pitch, yaw, itemsOfSlot0-9 (stack size; 0=offhand, 1-9=hotbar), or a literal number",
-  "alias\"name definition...\" — define an alias from inside a chain (the whole name+definition must be one quoted arg). Prefer the defineAlias tool instead",
+  "alias\\\"name definition...\" — define an alias from inside a chain (the whole name+definition must be one quoted arg, e.g. alias\\\"myMacro log\\a wait\\10 log\\b\"). Prefer the defineAlias tool instead",
   "builtinRunAlias\\name — run a registered alias by name (extra \\args allowed)",
   "reapply\\action — re-assert a held key after a screen transition. actions: attack,use,forward,back,left,right,jump,sneak,sprint,drop,openInventory,playerList",
   "+lockKey\\target / -lockKey\\target — block / unblock physical input for a game key (gameKey:attack, gameKey:use, gameKey:forward, gameKey:back, gameKey:left, gameKey:right, gameKey:jump, gameKey:sneak, gameKey:sprint) or for all keys bound to a custom alias name, so real input can't interfere with automation. Locks are auto-restored on disconnect",
@@ -122,7 +122,7 @@ const TOOLS = [
         def: {
           type: "string",
           description:
-            "Alias chain definition. Space-separated aliases, backslash for args, double quotes around multi-word args: e.g. 'slot\\2 wait\\1 +forward' or sendCommand\"time set day\".",
+            "Alias chain definition. Space-separated aliases, backslash for args, \\\"-quoted multi-word args: e.g. 'slot\\2 wait\\1 +forward' or sendCommand\\\"time set day\".",
         },
       },
       required: ["def"],
@@ -133,7 +133,7 @@ const TOOLS = [
     description:
       "Define a new alias (macro) through the game's real /alias command and return the game's feedback. " +
       "'def' uses the exact same chain syntax as runAlias (space-separated chain, backslash for args, " +
-      "double quotes around multi-word args). Alias names must be single words and cannot overwrite " +
+      "\\\"-quoted multi-word args like say\\\"hi all\"). Alias names must be single words and cannot overwrite " +
       "builtin or predefined aliases (+attack, slot, ...). Must be in a world (not on the title screen).",
     inputSchema: {
       type: "object",
@@ -358,7 +358,10 @@ async function handleToolCall(toolName, args) {
       return wrapResult(await apiGet("/readCFG"));
 
     case "writeCFG":
-      return wrapResult(await apiPost("/writeCFG", null, { content: args.content || "" }));
+      // Content travels as a query parameter — the same as-is transport used
+      // for runAlias defs: percent-encoding only, no JSON escaping layers.
+      // The mod checks the query first and decodes %XX back to exact bytes.
+      return wrapResult(await apiPost("/writeCFG", { content: args.content || "" }));
 
     case "getLogDiff": {
       const result = await apiGet("/logDiff");

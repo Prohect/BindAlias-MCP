@@ -341,7 +341,7 @@ async function handleToolCall(toolName, args) {
         if (result.x !== undefined) {
           content.push({
             type: "text",
-            text: "x=" + result.x + " y=" + result.y + " z=" + result.z + " yaw=" + result.yaw + " pitch=" + result.pitch,
+            text: "x=" + result.x + " y=" + result.y + " z=" + result.z + " yaw=" + result.yaw + " pitch=" + result.pitch + " tick=" + result.tick
           });
         }
         return { content };

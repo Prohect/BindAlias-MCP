@@ -335,11 +335,16 @@ async function handleToolCall(toolName, args) {
     case "getScreenshot": {
       const result = await apiGet("/screenshot");
       if (result.base64) {
-        return {
-          content: [
-            { type: "image", data: result.base64, mimeType: "image/png" },
-          ],
-        };
+        const content = [
+          { type: "image", data: result.base64, mimeType: "image/png" },
+        ];
+        if (result.x !== undefined) {
+          content.push({
+            type: "text",
+            text: "x=" + result.x + " y=" + result.y + " z=" + result.z + " yaw=" + result.yaw + " pitch=" + result.pitch,
+          });
+        }
+        return { content };
       }
       return result;
     }

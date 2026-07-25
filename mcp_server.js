@@ -26,7 +26,7 @@ const API_BASE = "http://127.0.0.1:25575";
 // ignoring the quoting rule or assuming errors are reported.
 const ALIAS_SYNTAX = [
   "CHAIN SYNTAX: 'def' is a space-separated chain of alias calls, and a backslash separates an alias name from its args (and arg from arg), e.g. 'slot\\2 wait\\1 +forward'.",
-  "QUOTING (critical): spaces split the chain, so a multi-word argument must be wrapped in double quotes with the opening quote right after the backslash arg-divider: say\\\"hello world\" or sendCommand\\\"time set day\". Write the alias-language form exactly as shown — the bridge passes the def to the mod verbatim (as-is) and your tool framework handles JSON encoding.",
+  'QUOTING (critical): spaces split the chain, so a multi-word argument must be wrapped in double quotes with the opening quote right after the backslash arg-divider: say\\"hello world" or sendCommand\\"time set day". Write the alias-language form exactly as shown — the bridge passes the def to the mod verbatim (as-is) and your tool framework handles JSON encoding.',
   "FAILURES ARE SILENT: a misspelled or nonexistent alias name is ignored without any error, and runAlias still returns ok. When something didn't work, call getLogDiff to see the game log.",
   "+name presses/holds a key (enter state), -name releases it (exit state). Movement keys (+forward, +sprint, ...) are meant to be held; remember to release them when done.",
   "MOMENTARY KEYS MUST BE RELEASED: a still-held key is re-asserted every time a screen closes and the cursor re-grabs, re-firing its action. One-shot pattern: '+screenshot wait\\1 -screenshot'.",
@@ -71,12 +71,12 @@ const ALIAS_WITH_ARGS = [
   "setYaw\\deg — absolute yaw: 0=south(+Z), 90=west(-X), 180/-180=north(-Z), -90=east(+X)",
   "setPitch\\deg — absolute pitch: -90=straight up, 0=horizon, 90=straight down",
   "swapSlot\\a\\b or swapSlot\\a — swap two item stacks (1-arg form swaps with the currently selected hotbar slot). Player slots: 1-9=hotbar, 10-36=inventory, 37=feet(boots), 38=legs(leggings), 39=chest(chestplate), 40=head(helmet), 41=offhand. cN = Nth slot (1-based) of the open container menu (chest, crafting table, furnace, anvil, ...; getState lists these indices). Hotbar/offhand swaps work even while a container is open. Examples: swapSlot\\1\\9, swapSlot\\1\\c2 (hotbar 1 into crafting-grid slot 2)",
-  "say\\text — send a chat message to the server; quote multi-word text: say\\\"hi all\"",
-  "localSay\\text — client-side-only chat message (never sent); quote spaces: localSay\\\"hi all\"",
-  "sendCommand\\cmd — run a server command (no leading slash); quote spaces: sendCommand\\\"time set day\"",
-  "log\\text — append a line to the game log (read it back with getLogDiff); quote spaces: log\\\"some text\"",
+  'say\\text — send a chat message to the server; quote multi-word text: say\\"hi all"',
+  'localSay\\text — client-side-only chat message (never sent); quote spaces: localSay\\"hi all"',
+  'sendCommand\\cmd — run a server command (no leading slash); quote spaces: sendCommand\\"time set day"',
+  'log\\text — append a line to the game log (read it back with getLogDiff); quote spaces: log\\"some text"',
   "var\\name\\source — store a number for later use as an arg. sources: hotbarSlot (1-9), pitch, yaw, itemsOfSlot0-9 (stack size; 0=offhand, 1-9=hotbar), or a literal number",
-  "alias\\\"name definition...\" — define an alias from inside a chain (the whole name+definition must be one quoted arg, e.g. alias\\\"myMacro log\\a wait\\10 log\\b\"). Prefer the defineAlias tool instead",
+  'alias\\"name definition..." — define an alias from inside a chain (the whole name+definition must be one quoted arg, e.g. alias\\"myMacro log\\a wait\\10 log\\b"). Prefer the defineAlias tool instead',
   "builtinRunAlias\\name — run a registered alias by name (extra \\args allowed)",
   "reapply\\action — re-assert a held key after a screen transition. actions: attack,use,forward,back,left,right,jump,sneak,sprint,drop,openInventory,playerList",
   "+lockKey\\target / -lockKey\\target — block / unblock physical input for a game key (gameKey:attack, gameKey:use, gameKey:forward, gameKey:back, gameKey:left, gameKey:right, gameKey:jump, gameKey:sneak, gameKey:sprint) or for all keys bound to a custom alias name, so real input can't interfere with automation. Locks are auto-restored on disconnect",
@@ -90,7 +90,7 @@ const RUNALIAS_DESCRIPTION =
   ALIAS_WITHOUT_ARGS.join("; ") +
   ". ALIASES WITH ARGS (backslash separates args): " +
   ALIAS_WITH_ARGS.join("; ") +
-  ". RETURNS: JSON {\"ok\": true} as soon as the synchronous part of the chain has run; wait-deferred steps complete later. " +
+  '. RETURNS: JSON {"ok": true} as soon as the synchronous part of the chain has run; wait-deferred steps complete later. ' +
   "This is NOT an error channel — bad args and unknown aliases only show up in the game log, so follow up with getLogDiff/getState/getScreenshot to verify the outcome.";
 
 const TOOLS = [
@@ -123,7 +123,7 @@ const TOOLS = [
         def: {
           type: "string",
           description:
-            "Alias chain definition. Space-separated aliases, backslash for args, \\\"-quoted multi-word args: e.g. 'slot\\2 wait\\1 +forward' or sendCommand\\\"time set day\".",
+            'Alias chain definition. Space-separated aliases, backslash for args, \\"-quoted multi-word args: e.g. \'slot\\2 wait\\1 +forward\' or sendCommand\\"time set day".',
         },
       },
       required: ["def"],
@@ -134,13 +134,20 @@ const TOOLS = [
     description:
       "Define a new alias (macro) through the game's real /alias command and return the game's feedback. " +
       "'def' uses the exact same chain syntax as runAlias (space-separated chain, backslash for args, " +
-      "\\\"-quoted multi-word args like say\\\"hi all\"). Alias names must be single words and cannot overwrite " +
+      '\\"-quoted multi-word args like say\\"hi all"). Alias names must be single words and cannot overwrite ' +
       "builtin or predefined aliases (+attack, slot, ...). Must be in a world (not on the title screen).",
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Alias name to create (single word)." },
-        def: { type: "string", description: "Alias definition string (chain syntax, same as runAlias)." },
+        name: {
+          type: "string",
+          description: "Alias name to create (single word).",
+        },
+        def: {
+          type: "string",
+          description:
+            "Alias definition string (chain syntax, same as runAlias).",
+        },
       },
       required: ["name", "def"],
     },
@@ -289,7 +296,10 @@ function makeError(id, code, message) {
 // raw {error: ...} objects are never leaked as tool results.
 
 function errorResult(message) {
-  return { isError: true, content: [{ type: "text", text: "Error: " + message }] };
+  return {
+    isError: true,
+    content: [{ type: "text", text: "Error: " + message }],
+  };
 }
 
 function textResult(text) {
@@ -300,7 +310,9 @@ function textResult(text) {
 // {"ok":true}), pretty-printed when long (getState snapshots).
 function jsonResult(obj) {
   const compact = JSON.stringify(obj);
-  return textResult(compact.length <= 120 ? compact : JSON.stringify(obj, null, 2));
+  return textResult(
+    compact.length <= 120 ? compact : JSON.stringify(obj, null, 2),
+  );
 }
 
 // Normalize a raw bridge/mod response into a proper MCP tool result.
@@ -310,7 +322,9 @@ function wrapResult(result) {
   if (result.error) return errorResult(result.error); // bridge/mod error
   if (typeof result.content === "string") {
     // readCFG: raw config file text
-    return textResult(result.content.length ? result.content : "(config file is empty)");
+    return textResult(
+      result.content.length ? result.content : "(config file is empty)",
+    );
   }
   return jsonResult(result);
 }
@@ -330,7 +344,19 @@ async function handleToolCall(toolName, args) {
         if (result.x !== undefined) {
           content.push({
             type: "text",
-            text: "x=" + result.x + " y=" + result.y + " z=" + result.z + " yaw=" + result.yaw + " pitch=" + result.pitch + " tick=" + result.tick
+            text:
+              "x=" +
+              result.x +
+              " y=" +
+              result.y +
+              " z=" +
+              result.z +
+              " yaw=" +
+              result.yaw +
+              " pitch=" +
+              result.pitch +
+              " tick=" +
+              result.tick,
           });
         }
         return { content };
@@ -347,7 +373,8 @@ async function handleToolCall(toolName, args) {
         def: args.def || "",
       });
       // Success: surface the game's feedback line directly, e.g. "Alias x = ..."
-      if (result && result.ok && result.feedback) return textResult(result.feedback);
+      if (result && result.ok && result.feedback)
+        return textResult(result.feedback);
       return wrapResult(result);
     }
 
@@ -358,7 +385,9 @@ async function handleToolCall(toolName, args) {
       // Content travels as a query parameter — the same as-is transport used
       // for runAlias defs: percent-encoding only, no JSON escaping layers.
       // The mod checks the query first and decodes %XX back to exact bytes.
-      return wrapResult(await apiPost("/writeCFG", { content: args.content || "" }));
+      return wrapResult(
+        await apiPost("/writeCFG", { content: args.content || "" }),
+      );
 
     case "getLogDiff": {
       const result = await apiGet("/logDiff");
@@ -366,7 +395,11 @@ async function handleToolCall(toolName, args) {
       const messages = result.messages || "";
       const count = result.count || 0;
       // Plain multi-line text is far more readable than a JSON-escaped string
-      return textResult(count > 0 ? messages + "\n[" + count + " new message(s)]" : "(no new messages)");
+      return textResult(
+        count > 0
+          ? messages + "\n[" + count + " new message(s)]"
+          : "(no new messages)",
+      );
     }
 
     default:

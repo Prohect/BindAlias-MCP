@@ -103,7 +103,7 @@ const ALIAS_ARGS_HELP = [
   ["alias", "\\<name>\\<definition>  define a new alias"],
   [
     "swapSlot",
-    "\\<slot1>\\<slot2> or \\<slot1>  swap two slots or swap with current hotbar slot; slots 1-9=hotbar,10-36=inv,37-40=armor,41=offhand",
+    "\\<slot1>\\<slot2> or \\<slot1>  swap two slots or swap with current hotbar slot; slots 1-9=hotbar,10-36=inv,37-40=armor,41=offhand; c<N>=container slot N",
   ],
   ["wait", "\\<ticks>  pause execution for N ticks (20 ticks=1s)"],
   ["yaw", "\\<degrees>  rotate yaw relative"],

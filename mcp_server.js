@@ -12,6 +12,7 @@
  */
 
 const http = require("http");
+const fs = require("fs");
 
 const API_BASE = "http://127.0.0.1:25575";
 
@@ -202,23 +203,26 @@ function buildUrl(path, params) {
 function apiGet(path, params) {
   const url = buildUrl(path, params);
   return new Promise((resolve) => {
-    http
-      .get(url, { timeout: 10000 }, (res) => {
-        let data = "";
-        res.on("data", (chunk) => {
-          data += chunk;
-        });
-        res.on("end", () => {
-          try {
-            resolve(JSON.parse(data));
-          } catch {
-            resolve({ error: "Invalid JSON response" });
-          }
-        });
-      })
-      .on("error", (e) => {
-        resolve({ error: "Cannot connect to mod: " + e.message });
+    const req = http.get(url, { timeout: 10000 }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => {
+        data += chunk;
       });
+      res.on("end", () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch {
+          resolve({ error: "Invalid JSON response" });
+        }
+      });
+    });
+    // The timeout option only emits 'timeout' on socket idleness — it does
+    // NOT abort the request. Destroy manually so the promise settles via
+    // the 'error' handler instead of hanging forever.
+    req.on("timeout", () => req.destroy(new Error("request timed out")));
+    req.on("error", (e) => {
+      resolve({ error: "Cannot connect to mod: " + e.message });
+    });
   });
 }
 
@@ -252,6 +256,8 @@ function apiPost(path, params, body) {
         });
       },
     );
+    // Same manual abort as apiGet — 'timeout' alone does not end the request.
+    req.on("timeout", () => req.destroy(new Error("request timed out")));
     req.on("error", (e) => {
       resolve({ error: "Cannot connect to mod: " + e.message });
     });
@@ -264,7 +270,7 @@ function apiPost(path, params, body) {
 // Use fs.writeSync(fd=1) for stdout to avoid pipe buffering on Windows.
 // process.stdout.write() can buffer when stdout is a pipe (not a TTY),
 // causing Zed's initialize handshake to time out after 60s.
-const fs = require("fs");
+
 function send(obj) {
   fs.writeSync(1, JSON.stringify(obj) + "\n");
 }
@@ -332,17 +338,8 @@ async function handleToolCall(toolName, args) {
       return errorResult("screenshot failed: unexpected response from mod");
     }
 
-    case "runAlias": {
-      const params = {};
-      if (args.def) {
-        params.def = args.def;
-      } else {
-        // legacy: name + args
-        params.name = args.name || "";
-        if (args.args) params.args = args.args;
-      }
-      return wrapResult(await apiPost("/runAlias", params));
-    }
+    case "runAlias":
+      return wrapResult(await apiPost("/runAlias", { def: args.def || "" }));
 
     case "defineAlias": {
       const result = await apiPost("/defineAlias", {
@@ -384,15 +381,6 @@ async function handleToolCall(toolName, args) {
 let stdinBuffer = "";
 
 function main() {
-  // Write a startup marker so we can tell if the process even starts.
-  // If this file appears, the process launched; if not, node wasn't found.
-  try {
-    require("fs").writeFileSync(
-      __dirname + "/.mcp_startup",
-      Date.now().toString(),
-    );
-  } catch (_) {}
-
   fs.writeSync(2, "[mcp_server] started, waiting for stdin...\n");
 
   process.stdin.setEncoding("utf8");
@@ -443,6 +431,8 @@ function handleLine(line) {
         serverInfo: { name: "bind-alias-plus-mcp", version: "1.0.0" },
       }),
     );
+  } else if (method === "ping") {
+    send(makeResponse(id, {}));
   } else if (method === "tools/list") {
     send(makeResponse(id, { tools: TOOLS }));
   } else if (method === "tools/call") {
@@ -450,9 +440,14 @@ function handleLine(line) {
     const toolName = params.name || "";
     const args = params.arguments || {};
 
-    handleToolCall(toolName, args).then((result) => {
-      send(makeResponse(id, result));
-    });
+    handleToolCall(toolName, args)
+      .then((result) => {
+        send(makeResponse(id, result));
+      })
+      .catch((e) => {
+        // Never leave a tool call unanswered, even on an internal bug.
+        send(makeError(id, -32603, String((e && e.message) || e)));
+      });
   } else if (method === "notifications/initialized") {
     // No response for notifications
   } else {

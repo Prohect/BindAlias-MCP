@@ -48,7 +48,7 @@ const KEY_ALIASES = [
   "+jump / -jump — hold to hop on land, swim up in water, or ascend while flying (creative)",
   "+sneak / -sneak — hold sneak (shift)",
   "+sprint / -sprint — hold sprint",
-  "+drop / -drop — press drops one item of the held stack; hold to keep dropping. In a container screen drops from the hovered slot (inventory screen: hover rests on slot 14). Stack split: drop part of a stack, then swapSlot the remainder into a container slot so the piles won't re-merge",
+  "+drop / -drop — press drops one item of the held stack; hold to keep dropping. In a container screen drops from the hovered slot. Stack split: drop part of a stack, then swapSlot the remainder into a container slot so the piles won't re-merge",
   "+playerList / -playerList — hold to show the online-player (Tab) overlay",
   "+advancements / -advancements — toggle the advancements screen, -advancements has no toggle effect; release right after (RELEASE RULE)",
 ];
@@ -58,7 +58,7 @@ const SWITCH_ALIASES = [
   "+openInventory / -openInventory — open the player inventory (no-op if another screen is open) / close the current container screen",
   "+debugOverlay / -debugOverlay — show / hide the F3 debug overlay",
   "+silent / -silent — suppress / restore mod feedback messages in chat",
-  "+freeCursor / -freeCursor — (dev) keep the OS cursor free from the game, bypass some vanllia logic guards for agent experience; camera driven only by yaw/pitch aliases",
+  "+freeCursor / -freeCursor — (dev) keep the OS cursor free from the game, bypass some vanilla logic guards for agent experience; camera driven only by yaw/pitch aliases. On any container screen the hovered slot is pinned to the player-inventory slot 14",
 ];
 
 // ACTION aliases — one-shot calls, no +/- form.
@@ -90,7 +90,7 @@ const COMMAND_ALIASES = [
   "var\\name\\source — store a number for use as an arg. sources: hotbarSlot, pitch, yaw, itemsOfSlot0-9 (0=offhand, 1-9=hotbar) (stack count), or a literal number",
   "alias\\\"name definition...\" — define an alias from inside a chain (one quoted arg, or ';' as space — NESTING). Prefer the defineAlias tool if you dont need dynamic alias definitions",
   "builtinRunAlias\\name — run a registered alias by name (extra \\args allowed, do not support inline chain or alias definition)",
-  "reapply\\action — re-assert a held key after a screen transition. actions: attack,use,forward,back,left,right,jump,sneak,sprint,drop,openInventory,playerList. Most actions could work to beat the vanllia releaseAll() on setScreen event (make sure reapply is deferred after the setScreen event), +attack and +use have builtin guard to avoid the bypass for safety",
+  "reapply\\action — re-assert a held key after a screen transition. actions: attack,use,forward,back,left,right,jump,sneak,sprint,drop,openInventory,playerList. Most actions could work to beat the vanilla releaseAll() on setScreen event (make sure reapply is deferred after the setScreen event), +attack and +use have builtin guard to avoid the bypass for safety",
 ];
 
 const RUNALIAS_DESCRIPTION =
@@ -113,7 +113,7 @@ const TOOLS = [
       "Get a snapshot of the current game state: open screen class name (null = in-game HUD), " +
       "ticks since world join, world/server name, dimension, player x/y/z/yaw/pitch, health, " +
       "held item registry name + count, selected hotbar slot (1-9). " +
-      "When a container screen is open, also patchs a 'container' section: " +
+      "When a container screen is open, also includes a 'container' section: " +
       "items[] whose 'index' is directly usable as a swapSlot argument (a number 1-41 for player-inventory slots, " +
       "or a 'cN' string for container-menu slots), a 'grid' ASCII map of the container slots " +
       "('#' empty, '$' occupied, ' ' no slot) with aligned per-cell c-indices in 'cells', " +

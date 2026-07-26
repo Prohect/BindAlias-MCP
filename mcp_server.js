@@ -37,7 +37,7 @@ const ALIAS_RULES = [
   "TIMING: wait\\N defers the rest of the chain by N ticks (20/s default); runAlias returns immediately without waiting chain of alias done. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\\"tick rate 1\") an observe->reason->react cycle costs low ticks, so steps spread across calls — and keys held between calls — could stay predictable.",
   "RELEASE RULE: +x persists until -x, across tool calls and screen transitions. Held states re-fire their press action whenever a screen closes and the cursor re-grabs (a lingering +openInventory re-opens the inventory you just closed). Release when the effect should stop; one-shot keys right after press: '+advancements wait\\1 -advancements'.",
   "SCREENS: while any GUI screen is open, +attack/+use presses are suppressed (releases still work) and +openInventory does nothing. While a text-input screen is open (chat, sign, book, command block), all key-like presses are suppressed. Movement aliases (+forward, +jump, +sneak, etc.) still work under non-text screens like inventory and containers.",
-  "VARIABLES: numbers stored via the var alias can be used as numeric args anywhere (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot ... slot\\s'.",
+  "VARIABLES: numbers stored via the var alias can be used as numeric args anywhere (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot slot\\1 ... slot\\s'. Variables set from a c<N> source (var\\name\\c3) are stored in a special map only accessible by swapSlot and treated as container-slot references by swapSlot.",
 ];
 
 // KEY aliases — simulate vanilla keybinds: +x = key down (held), -x = key up.
@@ -87,7 +87,7 @@ const COMMAND_ALIASES = [
   "localSay\\text — client-side-only chat message (never sent)",
   "sendCommand\\cmd — run a server command (no leading slash)",
   "log\\text — append a line to the game log (read it back with getLogDiff)",
-  "var\\name\\source — store a number for use as an arg. sources: hotbarSlot, pitch, yaw, itemsOfSlot0-9 (0=offhand, 1-9=hotbar) (stack count), or a literal number",
+  "var\\name\\source — store a number for use as an arg. sources: hotbarSlot, yaw, pitch, itemsOfSlot0-9 (0=offhand, 1-9=hotbar) (stack count), a literal number, or specially c<N> which is in a different map that only swapSlot could access as a container-slot reference.",
   "alias\\\"name definition...\" — define an alias from inside a chain (one quoted arg, or ';' as space — NESTING). Prefer the defineAlias tool if you dont need dynamic alias definitions",
   "builtinRunAlias\\name — run a registered alias by name (extra \\args allowed, do not support inline chain or alias definition)",
   "reapply\\action — re-assert a held key after a screen transition. actions: attack,use,forward,back,left,right,jump,sneak,sprint,drop,openInventory,playerList. Most actions could work to beat the vanilla releaseAll() on setScreen event (make sure reapply is deferred after the setScreen event), +attack and +use have builtin guard to avoid the bypass for safety",

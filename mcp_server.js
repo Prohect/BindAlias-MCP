@@ -104,7 +104,7 @@ const RUNALIAS_DESCRIPTION =
   ACTION_ALIASES.join("; ") +
   ". COMMAND ALIASES (backslash separates args): " +
   COMMAND_ALIASES.join("; ") +
-  '. RETURNS: JSON {"ok": true} once the synchronous part ran; wait-deferred steps finish later. Not an error channel — failures only appear in the game log (getLogDiff).';
+  '. RETURNS: JSON {"tick": <N>} — ticks since world join when the alias was executed (-1 if not in a world). Not an error channel — failures only appear in the game log (getLogDiff).';
 
 const TOOLS = [
   {
@@ -377,8 +377,12 @@ async function handleToolCall(toolName, args) {
       return errorResult("screenshot failed: unexpected response from mod");
     }
 
-    case "runAlias":
-      return wrapResult(await apiPost("/runAlias", { def: args.def || "" }));
+    case "runAlias": {
+      const result = await apiPost("/runAlias", { def: args.def || "" });
+      if (result.error) return errorResult(result.error);
+      const tick = result.tick;
+      return textResult(tick >= 0 ? "[T+" + tick + "]" : "(not in world)");
+    }
 
     case "defineAlias": {
       const result = await apiPost("/defineAlias", {

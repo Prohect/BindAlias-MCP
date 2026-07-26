@@ -170,7 +170,7 @@ const TOOLS = [
     description:
       "Read the raw text of the bind-alias-plus.cfg config file, returned as plain text. The cfg is auto-loaded on world join " +
       "(and by reloadCFG / writeCFG). One command per line: alias <name> <definition>, " +
-      "var <name> <source>, runAlias <aliasName>; '#' starts a comment, a leading '/' is optional. " +
+      "var <name> <source>, runAlias <def>; '#' starts a comment, a leading '/' is optional. " +
       "Read config to understand what you defined as own capability expansions and instructions of them.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },

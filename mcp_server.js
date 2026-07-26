@@ -34,7 +34,7 @@ const ALIAS_RULES = [
   "NESTING: in alias's args, ';' converts to a real space — write ';' instead of spaces to keep a nested chain intact, e.g. 'alias\\newAlias;+forward;wait\\20;-forward'. Elsewhere ';' is literal.",
   "SILENT FAILURES: misspelled names and bad args are skipped silently (runAlias still returns ok) — verify with getLogDiff / getState / getScreenshot.",
   "DETERMINISM: the host injects no physical input — state changes come only from your chains or game logic, so held keys behave exactly as vanilla and screens change only from your chains or game events (e.g. death).",
-  "TIMING: wait\\N defers the rest of the chain by N ticks (20/s default); runAlias returns immediately without waiting chain of alias done. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\\"tick rate 1\") an observe->reason->react cycle costs low ticks, so steps spread across calls — and keys held between calls — could stay predictable.",
+  "TIMING: wait\\N defers the rest of the chain by N ticks; runAlias returns immediately without waiting chain of alias done. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\\"tick rate 1\") an observe->reason->react cycle costs low ticks, so steps spread across calls — and keys held between calls — could stay predictable.",
   "RELEASE RULE: +x persists until -x, across tool calls and screen transitions. Held states re-fire their press action whenever a screen closes and the cursor re-grabs (a lingering +openInventory re-opens the inventory you just closed). Release when the effect should stop; one-shot keys right after press: '+advancements wait\\1 -advancements'.",
   "SCREENS: while any GUI screen is open, +attack/+use presses are suppressed (releases still work) and +openInventory does nothing. While a text-input screen is open (chat, sign, book, command block), all key-like presses are suppressed. Movement aliases (+forward, +jump, +sneak, etc.) still work under non-text screens like inventory and containers.",
   "VARIABLES: numbers stored via the var alias can be used as numeric args anywhere (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot slot\\1 ... slot\\s'. Variables set from a c<N> source (var\\name\\c3) are stored in a special map only accessible by swapSlot and treated as container-slot references by swapSlot.",
@@ -78,7 +78,7 @@ const ACTION_ALIASES = [
 // COMMAND aliases — take arguments (backslash-separated).
 const COMMAND_ALIASES = [
   "slot\\1-9 — select hotbar slot (works even with a screen open)",
-  "wait\\ticks — defer the rest of the chain by N ticks, wait\\0 defer that to next tick",
+  "wait\\ticks — defer the rest of the chain by N ticks (N >= 0), wait\\0 defer that to next tick",
   "yaw\\deg / pitch\\deg — rotate the camera by relative degrees",
   "setYaw\\deg — absolute yaw: 0=south(+Z), 90=west(-X), 180/-180=north(-Z), -90=east(+X)",
   "setPitch\\deg — absolute pitch: -90=up, 0=horizon, 90=down",

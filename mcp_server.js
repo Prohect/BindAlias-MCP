@@ -78,7 +78,7 @@ const ACTION_ALIASES = [
 // COMMAND aliases — take arguments (backslash-separated).
 const COMMAND_ALIASES = [
   "slot\\1-9 — select hotbar slot (works even with a screen open)",
-  "wait\\ticks — defer the rest of the chain by N ticks (N >= 0), wait\\0 defer that to next tick",
+  "wait\\ticks — defer the rest of the chain by N ticks (N >= 0), wait\\1 defer that to next tick, wait\\0 NOP",
   "yaw\\deg / pitch\\deg — rotate the camera by relative degrees",
   "setYaw\\deg — absolute yaw: 0=south(+Z), 90=west(-X), 180/-180=north(-Z), -90=east(+X)",
   "setPitch\\deg — absolute pitch: -90=up, 0=horizon, 90=down",

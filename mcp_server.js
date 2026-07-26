@@ -82,7 +82,7 @@ const COMMAND_ALIASES = [
   "yaw\\deg / pitch\\deg — rotate the camera by relative degrees",
   "setYaw\\deg — absolute yaw: 0=south(+Z), 90=west(-X), 180/-180=north(-Z), -90=east(+X)",
   "setPitch\\deg — absolute pitch: -90=up, 0=horizon, 90=down",
-  "swapSlot\\a\\b or swapSlot\\a — swap two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand; cN = Nth slot of the open container menu (getState lists c-indices), works while a container is open. Examples: swapSlot\\1\\9, swapSlot\\1\\c2",
+  "swapSlot\\a\\b or swapSlot\\a — swap two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand; cN = Nth slot of the open container menu (getState lists c-indices), works under a container screen if c<N> or c<N> valued var is included, works if no screen. Examples: swapSlot\\1\\9, swapSlot\\1\\c2",
   "say\\text — send a chat message to the server",
   "localSay\\text — client-side-only chat message (never sent)",
   "sendCommand\\cmd — run a server command (no leading slash)",

@@ -357,19 +357,14 @@ async function handleToolCall(toolName, args) {
         if (result.x !== undefined) {
           content.push({
             type: "text",
-            text:
-              "x=" +
-              result.x +
-              " y=" +
-              result.y +
-              " z=" +
-              result.z +
-              " yaw=" +
-              result.yaw +
-              " pitch=" +
-              result.pitch +
-              " tick=" +
-              result.tick,
+            text: JSON.stringify({
+              x: result.x,
+              y: result.y,
+              z: result.z,
+              yaw: result.yaw,
+              pitch: result.pitch,
+              tick: result.tick,
+            }),
           });
         }
         return { content };
@@ -381,7 +376,9 @@ async function handleToolCall(toolName, args) {
       const result = await apiPost("/runAlias", { def: args.def || "" });
       if (result.error) return errorResult(result.error);
       const tick = result.tick;
-      return textResult(tick >= 0 ? "[T+" + tick + "]" : "(not in world)");
+      return jsonResult(
+        tick >= 0 ? { tick } : { error: "not in world" },
+      );
     }
 
     case "defineAlias": {

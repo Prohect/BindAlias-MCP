@@ -36,7 +36,7 @@ const ALIAS_RULES = [
   "DETERMINISM: the host injects no physical input — state changes come only from your chains or game logic, so held keys behave exactly as vanilla and screens change only from your chains or game events (e.g. death).",
   "TIMING: wait\\N defers the rest of the chain by N ticks (20/s default); runAlias returns immediately without waiting chain of alias done. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\\"tick rate 1\") an observe->reason->react cycle costs low ticks, so steps spread across calls — and keys held between calls — could stay predictable.",
   "RELEASE RULE: +x persists until -x, across tool calls and screen transitions. Held states re-fire their press action whenever a screen closes and the cursor re-grabs (a lingering +openInventory re-opens the inventory you just closed). Release when the effect should stop; one-shot keys right after press: '+advancements wait\\1 -advancements'.",
-  "SCREENS: while any GUI screen is open, +attack/+use presses are suppressed (releases still work) and +openInventory does nothing. While a text-input screen is open (chat, sign, book, command block), key-like presses are suppressed.",
+  "SCREENS: while any GUI screen is open, +attack/+use presses are suppressed (releases still work) and +openInventory does nothing. While a text-input screen is open (chat, sign, book, command block), all key-like presses are suppressed. Movement aliases (+forward, +jump, +sneak, etc.) still work under non-text screens like inventory and containers.",
   "VARIABLES: numbers stored via the var alias can be used as numeric args anywhere (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot ... slot\\s'.",
 ];
 
@@ -48,7 +48,7 @@ const KEY_ALIASES = [
   "+jump / -jump — hold to hop on land, swim up in water, or ascend while flying (creative)",
   "+sneak / -sneak — hold sneak (shift)",
   "+sprint / -sprint — hold sprint",
-  "+drop / -drop — press drops one item of the held stack; hold to keep dropping. In a container screen drops from the hovered slot. Stack split: drop part of a stack, then swapSlot the remainder into a container slot so the piles won't re-merge",
+  "+drop / -drop — press drops one item of the held stack; hold to keep dropping. In a container screen drops from the hovered slot. When +freeCursor is active, hover is pinned to the player-inventory slot 14 on all container screens, so +drop targets that slot regardless of OS cursor position. Stack split: drop part of a stack, then swapSlot the remainder into a container slot so the piles won't re-merge",
   "+playerList / -playerList — hold to show the online-player (Tab) overlay",
   "+advancements / -advancements — toggle the advancements screen, -advancements has no toggle effect; release right after (RELEASE RULE)",
 ];
@@ -58,7 +58,7 @@ const SWITCH_ALIASES = [
   "+openInventory / -openInventory — open the player inventory (no-op if another screen is open) / close the current container screen",
   "+debugOverlay / -debugOverlay — show / hide the F3 debug overlay",
   "+silent / -silent — suppress / restore mod feedback messages in chat",
-  "+freeCursor / -freeCursor — (dev) keep the OS cursor free from the game, bypass some vanilla logic guards for agent experience; camera driven only by yaw/pitch aliases. On any container screen the hovered slot is pinned to the player-inventory slot 14",
+  "+freeCursor / -freeCursor — (dev) keep the OS cursor free from the game, bypass some vanilla logic guards for agent experience; camera driven only by yaw/pitch aliases. On any container screen the hovered slot is pinned to the player-inventory slot 14, making +drop and swapSlot target a deterministic slot",
 ];
 
 // ACTION aliases — one-shot calls, no +/- form.

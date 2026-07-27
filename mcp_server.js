@@ -104,7 +104,7 @@ const RUNALIAS_DESCRIPTION =
   ACTION_ALIASES.join("; ") +
   ". COMMAND ALIASES (backslash separates args): " +
   COMMAND_ALIASES.join("; ") +
-  '. RETURNS: JSON {"tick": <N>} — ticks since world join when the alias was executed (-1 if not in a world). Not an error channel — failures only appear in the game log (getLogDiff).';
+  '. RETURNS: JSON {"tick": <N>, "x": <double>, "y": <double>, "z": <double>, "yaw": <float>, "pitch": <float>} — ticks since world join and player POS snapshot captured BEFORE alias execution. tick is -1 if not in a world, and POS fields are omitted when not in a world.',
 
 const TOOLS = [
   {
@@ -377,7 +377,16 @@ async function handleToolCall(toolName, args) {
       const result = await apiPost("/runAlias", { def: args.def || "" });
       if (result.error) return errorResult(result.error);
       const tick = result.tick;
-      return jsonResult(tick >= 0 ? { tick } : { error: "not in world" });
+      if (tick < 0) return jsonResult({ error: "not in world" });
+      const out = { tick };
+      if (result.x !== undefined) {
+        out.x = result.x;
+        out.y = result.y;
+        out.z = result.z;
+        out.yaw = result.yaw;
+        out.pitch = result.pitch;
+      }
+      return jsonResult(out);
     }
 
     case "defineAlias": {

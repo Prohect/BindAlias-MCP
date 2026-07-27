@@ -116,7 +116,7 @@ const TOOLS = [
       "When a container screen is open, also includes a 'container' object: " +
       "inventory_items[] whose 'index' is a swapSlot argument (number 1-41 for player-inventory, " +
       "'cNN' string for container slots), container_grid — 2D array of cell strings " +
-      "('cNN:*' occupied, 'cNN:O' empty slot, '     ' format placeholder), " +
+      "('cNN:*' occupied, 'cNN:o' empty slot, '     ' format placeholder), " +
       "and empty_inv listing empty player-inventory slot ranges. " +
       "'cNN' indices match swapSlot's c<N> addressing.",
     inputSchema: { type: "object", properties: {}, required: [] },

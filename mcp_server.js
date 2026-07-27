@@ -34,7 +34,7 @@ const ALIAS_RULES = [
   "NESTING: in alias's args, ';' converts to a real space — write ';' instead of spaces to keep a nested chain intact, e.g. 'alias\\newAlias;+forward;wait\\20;-forward'. Elsewhere ';' is literal.",
   "SILENT FAILURES: misspelled names and bad args are skipped silently (runAlias still returns ok) — verify with getLogDiff / getState / getScreenshot.",
   "DETERMINISM: the host injects no physical input — state changes come only from your chains or game logic, so held keys behave exactly as vanilla and screens change only from your chains or game events (e.g. death).",
-  "TIMING: wait\\N defers the rest of the chain by N ticks; runAlias returns immediately without waiting chain of alias done. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\\"tick rate 1\") an observe->reason->react cycle costs low ticks, so steps spread across calls — and keys held between calls — could stay predictable.",
+  'TIMING: wait\\N defers the rest of the chain by N ticks; runAlias returns immediately without waiting chain of alias done. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\"tick rate 1") an observe->reason->react cycle costs low ticks, so steps spread across calls — and keys held between calls — could stay predictable.',
   "RELEASE RULE: +x persists until -x, across tool calls and screen transitions. Held states re-fire their press action whenever a screen closes and the cursor re-grabs (a lingering +openInventory re-opens the inventory you just closed). Release when the effect should stop; one-shot keys right after press: '+advancements wait\\1 -advancements'.",
   "SCREENS: while any GUI screen is open, +attack/+use presses are suppressed (releases still work) and +openInventory does nothing. While a text-input screen is open (chat, sign, book, command block), all key-like presses are suppressed. Movement aliases (+forward, +jump, +sneak, etc.) still work under non-text screens like inventory and containers.",
   "VARIABLES: numbers stored via the var alias can be used as numeric args anywhere (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot slot\\1 ... slot\\s'. Variables set from a c<N> source (var\\name\\c3) are stored in a special map only accessible by swapSlot and treated as container-slot references by swapSlot.",
@@ -82,7 +82,7 @@ const COMMAND_ALIASES = [
   "yaw\\deg / pitch\\deg — rotate the camera by relative degrees",
   "setYaw\\deg — absolute yaw: 0=south(+Z), 90=west(-X), 180/-180=north(-Z), -90=east(+X)",
   "setPitch\\deg — absolute pitch: -90=up, 0=horizon, 90=down",
-  "swapSlot\\a\\b or swapSlot\\a — swap two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand; cN = Nth slot of the open container menu (getState lists c-indices), works under a container screen if c<N> or c<N> valued var is included, works if no screen. Examples: swapSlot\\1\\9, swapSlot\\1\\c2",
+  "swapSlot\\a\\b or swapSlot\\a — swap two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand; c<N> = Nth slot of the open container menu (getState lists c-indices), works under a container screen if c<N> or c<N> valued var is included, works if no screen. Examples: swapSlot\\1\\9, swapSlot\\1\\c2",
   "say\\text — send a chat message to the server",
   "localSay\\text — client-side-only chat message (never sent)",
   "sendCommand\\cmd — run a server command (no leading slash)",
@@ -110,14 +110,15 @@ const TOOLS = [
   {
     name: "getState",
     description:
-      "Get a snapshot of the current game state: open screen class name (null = in-game HUD), " +
-      "ticks since world join, world/server name, dimension, player x/y/z/yaw/pitch, health, " +
-      "held item registry name + count, selected hotbar slot (1-9). " +
-      "When a container screen is open, also includes a 'container' section: " +
-      "items[] whose 'index' is directly usable as a swapSlot argument (a number 1-41 for player-inventory slots, " +
-      "or a 'cN' string for container-menu slots), a 'grid' ASCII map of the container slots " +
-      "('#' empty, '$' occupied, ' ' no slot) with aligned per-cell c-indices in 'cells', " +
-      "and 'emptyInv' listing empty player-inventory slot ranges.",
+      "Get a snapshot of the current game state: dimension, screen class name (null = in-game HUD), " +
+      "player x/y/z/yaw/pitch, health, held item + count, selected_hotbar_slot (1-9), " +
+      "durability of selected hotbar slot item (only for damageable items), ticks since world join. " +
+      "When a container screen is open, also includes a 'container' object: " +
+      "inventory_items[] whose 'index' is a swapSlot argument (number 1-41 for player-inventory, " +
+      "'cNN' string for container slots), container_grid — 2D array of cell strings " +
+      "('cNN:*' occupied, 'cNN:O' empty slot, '     ' placeholder), " +
+      "and empty_inv listing empty player-inventory slot ranges. " +
+      "'cNN' indices match swapSlot's c<N> addressing.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
@@ -376,9 +377,7 @@ async function handleToolCall(toolName, args) {
       const result = await apiPost("/runAlias", { def: args.def || "" });
       if (result.error) return errorResult(result.error);
       const tick = result.tick;
-      return jsonResult(
-        tick >= 0 ? { tick } : { error: "not in world" },
-      );
+      return jsonResult(tick >= 0 ? { tick } : { error: "not in world" });
     }
 
     case "defineAlias": {

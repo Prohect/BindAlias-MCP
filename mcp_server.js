@@ -104,7 +104,7 @@ const RUNALIAS_DESCRIPTION =
   ACTION_ALIASES.join("; ") +
   ". COMMAND ALIASES (backslash separates args): " +
   COMMAND_ALIASES.join("; ") +
-  '. RETURNS: JSON {"tick": <N>, "x": <double>, "y": <double>, "z": <double>, "yaw": <float>, "pitch": <float>} — ticks since world join and player POS snapshot captured BEFORE alias execution. tick is -1 if not in a world, and POS fields are omitted when not in a world.',
+  '. RETURNS: JSON {"tick": <N>, "x": <double>, "y": <double>, "z": <double>, "yaw": <float>, "pitch": <float>} — ticks since world join and player POS snapshot captured BEFORE alias execution. tick is -1 if not in a world, and POS fields are omitted when not in a world.'
 
 const TOOLS = [
   {

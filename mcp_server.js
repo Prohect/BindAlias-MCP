@@ -192,7 +192,6 @@ const TOOLS = [
       required: ["content"],
     },
   },
-
 ];
 
 // ---- HTTP helpers ----
@@ -358,7 +357,8 @@ async function handleToolCall(toolName, args) {
         fetchLogDiff(),
       ]);
       // Warn on log-diff fetch failure but still return state
-      if (logDiff == null && state.error == null) state._logDiff = "(fetch failed)";
+      if (logDiff == null && state.error == null)
+        state._logDiff = "(fetch failed)";
       else if (state.error == null) state.logDiff = logDiff;
       return wrapResult(state);
     }

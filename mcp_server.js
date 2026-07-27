@@ -32,7 +32,7 @@ const ALIAS_RULES = [
   "CHAIN SYNTAX: 'def' is a space-separated chain of alias calls, and a backslash separates an alias name from its args (and arg from arg), e.g. 'slot\\2 wait\\1 +forward swapSlot\\2\\c3'.",
   'QUOTING: spaces split the chain, so a multi-word argument must be wrapped in double quotes with the opening quote right after the backslash arg-divider: say\\"hello world" or sendCommand\\"time set day".',
   "NESTING: in alias's args, ';' converts to a real space — write ';' instead of spaces to keep a nested chain intact, e.g. 'alias\\newAlias;+forward;wait\\20;-forward'. Elsewhere ';' is literal.",
-  "SILENT FAILURES: misspelled names and bad args are skipped silently (runAlias still returns ok) — verify with getLogDiff / getState / getScreenshot.",
+  "SILENT FAILURES: misspelled names and bad args are skipped silently (runAlias still returns ok) — verify with getState, getScreenshot, or the logDiff field returned by runAlias/getState/getScreenshot.",
   "DETERMINISM: the host injects no physical input — state changes come only from your chains or game logic, so held keys behave exactly as vanilla and screens change only from your chains or game events (e.g. death).",
   'TIMING: wait\\N defers the rest of the chain by N ticks; runAlias returns immediately without waiting chain of alias done. At default speed keep time-sensitive steps in ONE runAlias call (inter-call latency is unpredictable); at a low tick rate (sendCommand\\"tick rate 1") an observe->reason->react cycle costs low ticks, so steps spread across calls — and keys held between calls — could stay predictable.',
   "RELEASE RULE: +x persists until -x, across tool calls and screen transitions. Held states re-fire their press action whenever a screen closes and the cursor re-grabs. Release when the effect should stop; one-shot keys right after press: '+advancements wait\\1 -advancements'.",
@@ -85,7 +85,7 @@ const COMMAND_ALIASES = [
   "say\\text — send a chat message to the server",
   "localSay\\text — client-side-only chat message (never sent)",
   "sendCommand\\cmd — run a server command (no leading slash)",
-  "log\\text — append a line to the game log (read it back with getLogDiff)",
+  "log\\text — append a line to the game log (read it back via the logDiff field on runAlias/getState/getScreenshot)",
   "var\\name\\source — store a number for use as an arg. sources: hotbarSlot, yaw, pitch, itemsOfSlot0-9 (0=offhand, 1-9=hotbar) (stack count), a literal number, or specially c<N> which is in a different map that only swapSlot could access as a container-slot reference.",
   "alias\\\"name definition...\" — define an alias from inside a chain (one quoted arg, or ';' as space — NESTING). Prefer the defineAlias tool if you dont need dynamic alias definitions",
   "builtinRunAlias\\name — run a registered alias by name (extra \\args allowed, do not support inline chain or alias definition)",
@@ -103,7 +103,7 @@ const RUNALIAS_DESCRIPTION =
   ACTION_ALIASES.join("; ") +
   ". COMMAND ALIASES (backslash separates args): " +
   COMMAND_ALIASES.join("; ") +
-  '. RETURNS: JSON {"tick": <N>, "x": <double>, "y": <double>, "z": <double>, "yaw": <float>, "pitch": <float>} — ticks since world join and player POS snapshot captured BEFORE alias execution. tick is -1 if not in a world, and POS fields are omitted when not in a world.';
+  '. RETURNS: JSON {"tick": <N>, "x": <double>, "y": <double>, "z": <double>, "yaw": <float>, "pitch": <float>, "logDiff": "<messages>"} — ticks since world join and player POS snapshot captured BEFORE alias execution, plus new game-log messages since the last tool call (same as the former getLogDiff tool). tick is -1 if not in a world, and POS fields are omitted when not in a world.';
 
 const TOOLS = [
   {
@@ -192,14 +192,7 @@ const TOOLS = [
       required: ["content"],
     },
   },
-  {
-    name: "getLogDiff",
-    description:
-      "Get new game-log messages since the last getLogDiff call (chat, command feedback, mod warnings/errors), " +
-      "returned as plain multi-line text with a trailing '[N new message(s)]' marker ('(no new messages)' when nothing arrived). " +
-      "The primary way to verify runAlias results, because unknown alias names fail silently.",
-    inputSchema: { type: "object", properties: {}, required: [] },
-  },
+
 ];
 
 // ---- HTTP helpers ----
@@ -341,13 +334,40 @@ function wrapResult(result) {
   return jsonResult(result);
 }
 
+// Fetch and format log diff text. Returns null on error so callers can decide
+// whether to omit or surface the failure.
+async function fetchLogDiff() {
+  try {
+    const result = await apiGet("/logDiff");
+    if (result.error) return null;
+    const messages = result.messages || "";
+    const count = result.count || 0;
+    return count > 0
+      ? messages + "\n[" + count + " new message(s)]"
+      : "(no new messages)";
+  } catch (_) {
+    return null;
+  }
+}
+
 async function handleToolCall(toolName, args) {
   switch (toolName) {
-    case "getState":
-      return wrapResult(await apiGet("/state"));
+    case "getState": {
+      const [state, logDiff] = await Promise.all([
+        apiGet("/state"),
+        fetchLogDiff(),
+      ]);
+      // Warn on log-diff fetch failure but still return state
+      if (logDiff == null && state.error == null) state._logDiff = "(fetch failed)";
+      else if (state.error == null) state.logDiff = logDiff;
+      return wrapResult(state);
+    }
 
     case "getScreenshot": {
-      const result = await apiGet("/screenshot");
+      const [result, logDiff] = await Promise.all([
+        apiGet("/screenshot"),
+        fetchLogDiff(),
+      ]);
       if (result.error) return wrapResult(result);
       if (result.base64) {
         const content = [
@@ -366,13 +386,19 @@ async function handleToolCall(toolName, args) {
             }),
           });
         }
+        if (logDiff != null) {
+          content.push({ type: "text", text: "[logDiff]\n" + logDiff });
+        }
         return { content };
       }
       return errorResult("screenshot failed: unexpected response from mod");
     }
 
     case "runAlias": {
-      const result = await apiPost("/runAlias", { def: args.def || "" });
+      const [result, logDiff] = await Promise.all([
+        apiPost("/runAlias", { def: args.def || "" }),
+        fetchLogDiff(),
+      ]);
       if (result.error) return errorResult(result.error);
       const tick = result.tick;
       if (tick < 0) return jsonResult({ error: "not in world" });
@@ -384,6 +410,7 @@ async function handleToolCall(toolName, args) {
         out.yaw = result.yaw;
         out.pitch = result.pitch;
       }
+      if (logDiff != null) out.logDiff = logDiff;
       return jsonResult(out);
     }
 
@@ -408,19 +435,6 @@ async function handleToolCall(toolName, args) {
       return wrapResult(
         await apiPost("/writeCFG", { content: args.content || "" }),
       );
-
-    case "getLogDiff": {
-      const result = await apiGet("/logDiff");
-      if (result.error) return wrapResult(result);
-      const messages = result.messages || "";
-      const count = result.count || 0;
-      // Plain multi-line text is far more readable than a JSON-escaped string
-      return textResult(
-        count > 0
-          ? messages + "\n[" + count + " new message(s)]"
-          : "(no new messages)",
-      );
-    }
 
     default:
       return errorResult("unknown tool: " + toolName);

@@ -169,18 +169,17 @@ const TOOLS = [
   {
     name: "readCFG",
     description:
-      "Read the raw text of the bind-alias-plus.cfg config file, returned as plain text. The cfg is auto-loaded on world join " +
-      "(and by reloadCFG / writeCFG). One command per line: alias <name> <definition>, " +
+      "Read the raw text of the bind-alias-plus.cfg config file, returned as plain text. The cfg is auto-loaded (filtered non-comment lines executed by client command) on world join " +
+      "(and loaded by the alias reloadCFG / the tool writeCFG). One command per line: alias <name> <definition>, " +
       "var <name> <source>, runAlias <def>; '#' starts a comment, a leading '/' is optional. " +
-      "Read config to understand what you defined as own capability expansions and instructions of them.",
+      "IMPORTANT: Read cfg to understand what is defined as own capability expansions and instructions of them.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
     name: "writeCFG",
     description:
       "Overwrite the bind-alias-plus.cfg config file with new content and immediately reload it. " +
-      "Same line format as readCFG. NOTE: reloading only adds/overwrites — entries that were removed " +
-      "from the file stay registered. To make removals take effect, put 'runAlias unloadCFGAll' as the " +
+      "Same line format as readCFG. NOTE: reloading only adds/overwrites. Put 'runAlias unloadCFGAll' as the " +
       "first line (it clears everything the cfg previously autoloaded, then the rest of the file re-defines it). " +
       'Returns JSON {"ok": true}.',
     inputSchema: {

@@ -408,8 +408,8 @@ async function handleToolCall(toolName, args) {
       const tick = result.tick;
       if (tick < 0) return jsonResult({ error: "not in world" });
       // Optional delay (seconds, float) before returning
-      const delay = parseFloat(args.delay);
-      if (delay > 0) {
+      const delay = Number(args.delay);
+      if (Number.isFinite(delay) && delay > 0 && delay <= 60) {
         await new Promise((resolve) => setTimeout(resolve, delay * 1000));
       }
       const out = { tick };

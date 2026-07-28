@@ -141,7 +141,7 @@ const TOOLS = [
         delay: {
           type: "number",
           description:
-            "Optional delay in seconds (float) to wait after getting the immediate snapshot from the game before returning the result. Useful for giving the game time to process the alias's effects.",
+            "Optional delay in seconds (float) to wait after getting the immediate snapshot from the game before returning the result. Valid range: 0.0-60.0 seconds.",
         },
       },
       required: ["def"],

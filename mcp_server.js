@@ -138,6 +138,11 @@ const TOOLS = [
           description:
             'Alias chain definition. Space-separated aliases, backslash for args, \\"-quoted multi-word args: e.g. \'slot\\2 wait\\1 +forward\' or sendCommand\\"time set day".',
         },
+        delay: {
+          type: "number",
+          description:
+            "Optional delay in seconds (float) to wait after getting the immediate snapshot from the game before returning the result. Useful for giving the game time to process the alias's effects.",
+        },
       },
       required: ["def"],
     },
@@ -402,6 +407,11 @@ async function handleToolCall(toolName, args) {
       if (result.error) return errorResult(result.error);
       const tick = result.tick;
       if (tick < 0) return jsonResult({ error: "not in world" });
+      // Optional delay (seconds, float) before returning
+      const delay = parseFloat(args.delay);
+      if (delay > 0) {
+        await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+      }
       const out = { tick };
       if (result.x !== undefined) {
         out.x = result.x;

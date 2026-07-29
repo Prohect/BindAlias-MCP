@@ -48,7 +48,9 @@ const API_BASE = "http://127.0.0.1:" + parsePort();
 
 const ALIAS_RULES = [
   "SILENT FAILURES: misspelled alias_name and invalid args.",
-  "SCREENS: +attack/+use's effects to game logic are suppressed when any screen is open. These aliases (alias, applyRecipe, cyclePerspective, +-freeCursor, say, localSay, log, yaw, pitch, setYaw, setPitch, builtinRunAlias, FPS, TPS, TPS2, builtinShutdown, +- silent, slot, reloadCFG, unloadCFGAliases, unloadCFGAll, unloadCFGVars, var, wait) are NOT suppressed while a text-screen (chat, sign, book, command block) is open. These aliases (+forward, +left, +right, +back, +jump, +sneak, +drop) work on non-text-screens.  All builtin +aliases would be reapplied once on screen close event",
+  "SCREENS: +attack/+use's effects to game logic are suppressed when any screen is open. " +
+  "These aliases (+-attack, +-use, +-forward, +-back, +-left, +-right, +-jump, +-sneak, +-sprint, +-drop, +-playerList, +-advancements, +-debugOverlay, esc, closeScreen, toggleInventory, swapHand, pickItem, swapSlot, sendCommand, reapply) are suppressed while a text-screen (chat, sign, book, command block) is open. " +
+  "These aliases (+forward, +left, +right, +back, +jump, +sneak, +drop) work on non-text-screens.  All builtin +aliases would be reapplied once per screen close event",
   "VARIABLES: numbers stored via the var alias can be used as numeric args (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot slot\\1 ... slot\\s'. Variables set from a c<N> source (var\\name\\c3) are stored in a special map only accessible by swapSlot and treated as container_slot references by swapSlot.",
 ];
 

@@ -49,7 +49,7 @@ const API_BASE = "http://127.0.0.1:" + parsePort();
 const ALIAS_RULES = [
   "SILENT FAILURES: misspelled alias_name and invalid args.",
   "SCREENS: +attack/+use's effects to game logic are suppressed when any screen is open. " +
-  "These aliases (+-attack, +-use, +-forward, +-back, +-left, +-right, +-jump, +-sneak, +-sprint, +-drop, +-playerList, +-advancements, +-debugOverlay, esc, closeScreen, toggleInventory, swapHand, pickItem, swapSlot, sendCommand, reapply) are suppressed while a text-screen (chat, sign, book, command block) is open. " +
+  "These aliases (+-attack, +-use, +-forward, +-back, +-left, +-right, +-jump, +-sneak, +-sprint, +-drop, +-playerList, +-advancements, esc, closeScreen, toggleInventory, swapHand, pickItem, swapSlot, sendCommand, reapply) are suppressed while a text-screen (chat, sign, book, command block) is open. " +
   "These aliases (+forward, +left, +right, +back, +jump, +sneak, +drop) work on non-text-screens.  All builtin +aliases would be reapplied once per screen close event",
   "VARIABLES: numbers stored via the var alias can be used as numeric args (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot slot\\1 ... slot\\s'. Variables set from a c<N> source (var\\name\\c3) are stored in a special map only accessible by swapSlot and treated as container_slot references by swapSlot.",
 ];
@@ -69,7 +69,6 @@ const KEY_ALIASES = [
 
 // SWITCH aliases — boolean state: +x = ON, -x = OFF. Never toggles.
 const SWITCH_ALIASES = [
-  "+debugOverlay / -debugOverlay — show / hide the F3 debug overlay",
   "+silent / -silent — suppress / restore mod feedback messages in chat",
   "+freeCursor / -freeCursor — keep the OS cursor free from the game, bypass minging logic guard for experience; camera driven only by yaw/pitch aliases, pin the hovered slot to inventory slot 14 in any container screen",
 ];

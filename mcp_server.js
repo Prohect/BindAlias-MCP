@@ -62,7 +62,7 @@ const KEY_ALIASES = [
   "`+jump` / `-jump` — hold to jump on ground, swim up in water",
   "`+sneak` / `-sneak` — hold to sneak",
   "`+sprint` / `-sprint` — hold with `+forward` to sprint",
-  "`+drop` / `-drop` — hold to continuously drop items(1 or hold_ticks-3), tap to drop 1 item. Drop from the hovered slot in a container screen. Split a stack: drop part of a stack, then `swapSlot` the remainder into a container_slot so the piles won't re-merge to remainder, wait [move to item] for pickup",
+  "`+drop` / `-drop` — hold to continuously drop items(1 or hold_client_tick-3), tap to drop 1 item. Drop from the hovered slot in a container screen. Split a stack: drop part of a stack, then `swapSlot` the remainder into a container_slot so the piles won't re-merge to remainder, wait [move to item] for pickup",
   "`+playerList` / `-playerList` — hold to show the online-player overlay",
   "`+advancements` / `-advancements` — toggle the advancements screen, `-advancements` has no toggle effect",
 ];
@@ -90,16 +90,16 @@ const ACTION_ALIASES = [
 // COMMAND aliases — take arguments (backslash-separated).
 const COMMAND_ALIASES = [
   "`slot\\N` — select hotbar slot N(1-9) (works on/not on screen)",
-  "`wait\\N` — defer the rest of the chain by N client ticks (N >= 0), `wait\\0` NOP",
+  "`wait\\N` — defer the rest of the chain by N client_tick (N >= 0), `wait\\0` NOP",
   "`yaw\\deg` / `pitch\\deg` — rotate the camera by deg",
   "`setYaw\\deg` — set absolute yaw",
   "`setPitch\\deg` — set absolute pitch, -90 <= deg <= 90",
   "`swapSlot\\a\\b` or `swapSlot\\a` — SWAP(not implemented by left click event) two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand, `cN` Nth slot of a container menu. `cN` is valid on container screen if Nth slot exists. Works on container screen when `cN` or `cN` var is included. Works whether or not on screen when `cN` or `cN` var is not included. Arg order not matter. Examples: `swapSlot\\1\\c2`",
   '`applyRecipe\\query` — apply an unlocked craftable recipe into the crafting grid on screen (by recipe book event); NO crafting performed. query = result-item id ("minecraft:torch" or "torch") or a case-insensitive locale-name substring ("iron sword"). Errors go to the local game chat. See also the `listRecipes` tool',
-  "`say\\text` — send a chat message to server",
-  "`localSay\\text` — client-side-only chat message (never sent to server)",
-  "`sendCommand\\cmd` — send a server command (no leading slash)",
-  "`log\\text` — append text to the mod log",
+  "`say\\text` — send a chat text to server (quote arg if needed)",
+  "`localSay\\text` — client-side-only chat text (quote arg if needed)",
+  "`sendCommand\\cmd` — send a command to server (no leading slash)(quote arg if needed)",
+  "`log\\text` — send text to the mod log (quote arg if needed)",
   "`var\\name\\source` — store a number for use as an arg. sources: `hotbarSlot`, `yaw`, `pitch`, `itemsOfSlotN` (N=0-9, 0=offhand, 1-9=hotbar) (stack count), a literal number, or specially `cN` which is in a different map that only `swapSlot` could access as a container_slot reference.",
   "`alias\\name_with_definition` — define or redefine an alias (\" quoted arg, or ';' repacing space arg) during alias (chain) execution",
   "`builtinRunAlias\\name` — run a alias by name (support optional \\args)(not support inline multi-alias chain)",
@@ -121,11 +121,10 @@ const RUNALIAS_DESCRIPTION =
 
 const TOOLS = [
   {
-    name: "getState",
+    name: "getFullState",
     description:
       "Get a full snapshot of the current game state and drain all message channels. " +
-      "The envelope's tick counts client ticks since world join (-1 when not in a world). " +
-      "Prefer reading the incremental state diffs attached to every other tool response over polling 'getState' repeatedly.",
+      "Prefer reading the standard envelope (state diffs) attached to other tool response ('runAlias', 'getScreenshot', 'defineAlias' with OP needed or NOP) over polling 'getFullState'.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
@@ -143,12 +142,12 @@ const TOOLS = [
         def: {
           type: "string",
           description:
-            'Alias chain definition of 0 or more alias(es). Space for alias(with arg) separator, backslash for alias_name-arg separator or arg-arg separator, " quotes multi-word arg preventing space inside to be treated as alias(with arg) separator: e.g. `say\\"hello world"`. Semicolon for alias\'s (the alias named as `alias`) extra separator: e.g. `alias\\newAlias;+forward;wait\\20;-forward`',
+            'Alias chain definition of 0 or more alias(es). Space for alias(with arg) separator, backslash for alias_name-arg separator or arg-arg separator, " quotes multi-word arg preventing space inside to be treated as alias(with arg) separator: e.g. `say\\"hello world"`. Semicolon for alias\'s (the alias named as `alias`) extra separator: e.g. `alias\\turnDown;setPitch\\90`, `alias\\turnRight;yaw\\90`',
         },
         nap: {
           type: "integer",
           description:
-            "Take a nap: defer the tool call's response by N client ticks (integer, same unit as the wait\\N alias). The alias chain runs immediately; the response then blocks until N client ticks elapsed in game and returns the standard envelope captured AFTER the nap. WARNING: game KEEPS RUNNING while you nap, and you can neither react to anything happening nor poll info from game during nap until the api returns; DO NOT nap long(> 2 ticks) unless you have to skip **safe** boring time.",
+            "Take a nap: defer the tool call's response by N client_tick (integer, same unit as the wait\\N alias). The alias chain runs immediately; the response then blocks until N client_tick elapsed in game and returns the standard envelope captured AFTER the nap. WARNING: game KEEPS RUNNING while you nap, and you can neither react to anything happening nor poll info from game during nap until the api returns; DO NOT nap long(> 2 client_tick) unless you have to skip **safe** boring time.",
         },
       },
       required: ["def"],
@@ -212,7 +211,7 @@ const TOOLS = [
       "Without 'queries': returns recipes learned since the previous 'listRecipes' call (a diff — the first call after joining the world returns everything). " +
       "With 'queries' (result-item ids like 'minecraft:torch' or 'torch', or locale-name substrings like 'iron sword'): every query is answered independently — matches land in 'recipes', per-query failures in 'recipe_errors'. " +
       "Entries: {name, item, craftable}. craftable=true means the ingredients are in your inventory right now. " +
-      "Returns the standard envelope plus recipes/recipe_errors (see the 'getState' description).",
+      "Returns the standard envelope plus recipes/recipe_errors (see the 'getFullState' description).",
     inputSchema: {
       type: "object",
       properties: {
@@ -369,6 +368,9 @@ function wrapResult(result) {
 
 async function handleToolCall(toolName, args) {
   switch (toolName) {
+    case "getFullState":
+      return wrapResult(await apiGet("/state"));
+    //back compatibility with old client
     case "getState":
       return wrapResult(await apiGet("/state"));
 
@@ -387,8 +389,8 @@ async function handleToolCall(toolName, args) {
     }
 
     case "runAlias": {
-      // nap is measured in client ticks and served by the mod: it runs the
-      // chain immediately, then holds the response until N client ticks
+      // nap is measured in client_tick and served by the mod: it runs the
+      // chain immediately, then holds the response until N client_tick
       // elapsed and captures the envelope fresh (newest state + messages).
       const nap = Number(args.nap);
       const napTicks =
@@ -396,7 +398,7 @@ async function handleToolCall(toolName, args) {
       const params = { def: args.def || "" };
       if (napTicks > 0) params.nap = String(napTicks);
       // The mod answers only after the nap — the (inactivity) timeout must
-      // outlast the nap's expected wall time (20 client ticks = 1 s).
+      // outlast the nap's expected wall time (20 client_tick = 1 s).
       const result = await apiPost(
         "/runAlias",
         params,

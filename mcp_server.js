@@ -90,7 +90,7 @@ const ACTION_ALIASES = [
 // COMMAND aliases — take arguments (backslash-separated).
 const COMMAND_ALIASES = [
   "slot\\1-9 — select hotbar slot (works on/not on screen)",
-  "wait\\ticks — defer the rest of the chain by N ticks (N >= 0), wait\\0 NOP",
+  "wait\\ticks — defer the rest of the chain by N client ticks (N >= 0), wait\\0 NOP",
   "yaw\\deg / pitch\\deg — rotate the camera by deg",
   "setYaw\\deg — set absolute yaw",
   "setPitch\\deg — set absolute pitch, -90 <= deg <= 90",
@@ -117,15 +117,15 @@ const RUNALIAS_DESCRIPTION =
   ACTION_ALIASES.join("; ") +
   ". COMMAND ALIASES (backslash separates args): " +
   COMMAND_ALIASES.join("; ") +
-  ". RETURNS the standard envelope: the state diff is captured BEFORE execution.";
+  ". RETURNS the standard envelope: the state diff is captured BEFORE execution, or AFTER the nap when the nap arg is given.";
 
 const TOOLS = [
   {
     name: "getState",
     description:
       "Get a full snapshot of the current game state and drain all message channels. " +
-      " " +
-      " Prefer reading the incremental state diffs attached to every other tool response over polling getState repeatedly.",
+      "The envelope's tick counts client ticks since world join (-1 when not in a world). " +
+      "Prefer reading the incremental state diffs attached to every other tool response over polling getState repeatedly.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
@@ -146,9 +146,9 @@ const TOOLS = [
             'Alias chain definition of 0 or more alias(es). Space for alias(with arg) separator, backslash for alias_name-arg separator or arg-arg separator, \\"-quoted multi-word args: e.g. say\\"hello world". Semicolon for alias\'s (the alias named as `alias`) extra separator: e.g. "alias\\newAlias;+forward;wait\\20;-forward"',
         },
         nap: {
-          type: "number",
+          type: "integer",
           description:
-            "Take a nap: real world seconds (float, 0.0-60.0) to block the tool call api's response after game immediately responding to tool call api. WARNING: game KEEPS RUNNING while you nap — the response were captured BEFORE the nap, and you CANNOT neither react to anything happening NOR poll info from game during nap until the api returns; DO NOT nap unless you have to skip safe boring time.",
+            "Take a nap: defer the tool call's response by N client ticks (integer, same unit as the wait\\N alias). The alias chain runs immediately; the response then blocks until N client ticks elapsed in game and returns the standard envelope captured AFTER the nap. WARNING: game KEEPS RUNNING while you nap, and you can neither react to anything happening nor poll info from game during nap until the api returns; DO NOT nap unless you have to skip safe boring time.",
         },
       },
       required: ["def"],
@@ -271,7 +271,7 @@ function apiGet(path, params) {
   });
 }
 
-function apiPost(path, params, body) {
+function apiPost(path, params, body, timeoutMs) {
   const url = buildUrl(path, params);
   const bodyStr = body ? JSON.stringify(body) : null;
   return new Promise((resolve) => {
@@ -279,7 +279,7 @@ function apiPost(path, params, body) {
       url,
       {
         method: "POST",
-        timeout: 10000,
+        timeout: timeoutMs || 10000,
         headers: bodyStr
           ? {
               "Content-Type": "application/json",
@@ -387,13 +387,21 @@ async function handleToolCall(toolName, args) {
     }
 
     case "runAlias": {
-      const result = await apiPost("/runAlias", { def: args.def || "" });
-      if (result.error) return wrapResult(result);
-      // Take a nap (seconds, float) before returning
+      // nap is measured in client ticks and served by the mod: it runs the
+      // chain immediately, then holds the response until N client ticks
+      // elapsed and captures the envelope fresh (newest state + messages).
       const nap = Number(args.nap);
-      if (Number.isFinite(nap) && nap > 0 && nap <= 60) {
-        await new Promise((resolve) => setTimeout(resolve, nap * 1000));
-      }
+      const napTicks = Number.isInteger(nap) && nap >= 1 && nap <= 1200 ? nap : 0;
+      const params = { def: args.def || "" };
+      if (napTicks > 0) params.nap = String(napTicks);
+      // The mod answers only after the nap — the (inactivity) timeout must
+      // outlast the nap's expected wall time (20 client ticks = 1 s).
+      const result = await apiPost(
+        "/runAlias",
+        params,
+        null,
+        10000 + napTicks * 50,
+      );
       return wrapResult(result);
     }
 

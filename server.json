@@ -3,14 +3,14 @@
   "name": "io.github.Prohect/bind-alias-plus-mcp",
   "slug": "io.github.Prohect/bind-alias-plus-mcp",
   "description": "MCP bridge for BindAliasPlus Minecraft mod: game state, screenshots, aliases, and config editing.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "packages": [
     {
       "registryType": "npm",
       "packageName": "bind-alias-plus-mcp",
       "entrypoint": "bind-alias-plus-mcp",
       "identifier": "bind-alias-plus-mcp",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "transport": {
         "type": "stdio"
       }

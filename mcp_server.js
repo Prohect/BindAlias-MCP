@@ -47,63 +47,63 @@ const API_BASE = "http://127.0.0.1:" + parsePort();
 // ===========================================================================
 
 const ALIAS_RULES = [
-  "SILENT FAILURES: misspelled alias_name and invalid args.",
-  "SCREENS: +attack/+use's effects to game logic are suppressed when any screen is open. " +
-    "These aliases (+-attack, +-use, +-forward, +-back, +-left, +-right, +-jump, +-sneak, +-sprint, +-drop, +-playerList, +-advancements, esc, closeScreen, toggleInventory, swapHand, pickItem, swapSlot, sendCommand, reapply) are suppressed while a text-screen (chat, sign, book, command block) is open. " +
-    "These aliases (+forward, +left, +right, +back, +jump, +sneak, +drop) work on non-text-screens.  All builtin +aliases would be reapplied once per screen close event",
-  "VARIABLES: numbers stored via the var alias can be used as numeric args (slot, wait, yaw, pitch, setYaw, setPitch, swapSlot), e.g. 'var\\s\\hotbarSlot slot\\1 ... slot\\s'. Variables set from a c<N> source (var\\name\\c3) are stored in a special map only accessible by swapSlot and treated as container_slot references by swapSlot.",
+  "SILENT FAILURES: misspelled alias_name and invalid args. ",
+  "SCREENS: `+attack`/`+use`'s effects to game logic are suppressed when any screen is open. " +
+    "These aliases (+-attack, +-use, +-forward, +-back, +-left, +-right, +-jump, +-sneak, +-sprint, +-drop, +-playerList, +-advancements, `esc`, `closeScreen`, `toggleInventory`, `swapHand`, `pickItem`, `swapSlot`, `sendCommand`, `reapply`) are suppressed while a text-screen (chat, sign, book, command block) is open. " +
+    "These aliases (`+forward`, `+left`, `+right`, `+back`, `+jump`, `+sneak`, `+drop`) work on non-text-screens.  All builtin +aliases would be reapplied once per screen close event. ",
+  "VARIABLES: numbers stored via the var alias can be used as numeric args (`slot`, `wait`, `yaw`, `pitch`, `setYaw`, `setPitch`, `swapSlot`), e.g. `var\\s\\hotbarSlot slot\\1 +drop -drop slot\\s`. Variables set from a `cN` source (`var\\name\\c3`) are stored in a special map only accessible by `swapSlot` and treated as container_slot references by `swapSlot`.",
 ];
 
 // KEY aliases — simulate vanilla keybinds: +x = key down (held), -x = key up.
 const KEY_ALIASES = [
-  "+attack / -attack — hold to mine, tap to attack (not same as left click event)",
-  "+use / -use — hold to use item / interact with block, tap to place block (not same as right click event)",
-  "+forward +back +left +right (and - forms) — hold to move",
-  "+jump / -jump — hold to jump on ground, swim up in water",
-  "+sneak / -sneak — hold to sneak",
-  "+sprint / -sprint — hold with +forward to sprint",
-  "+drop / -drop — hold to continuously drop items(1 or hold_ticks-3), tap to drop 1 item. Drop from the hovered slot in a container screen. Split a stack: drop part of a stack, then swapSlot the remainder into a container_slot so the piles won't re-merge to remainder, wait [move to item] for pickup",
-  "+playerList / -playerList — hold to show the online-player overlay",
-  "+advancements / -advancements — toggle the advancements screen, -advancements has no toggle effect;",
+  "`+attack / -attack` — hold to mine, tap to attack (not same as left click event)",
+  "`+use / -use` — hold to use item / interact with block, tap to place block (not same as right click event)",
+  "`+forward` `+back` `+left` `+right` (and - forms) — hold to move",
+  "`+jump` / `-jump` — hold to jump on ground, swim up in water",
+  "`+sneak` / `-sneak` — hold to sneak",
+  "`+sprint` / `-sprint` — hold with `+forward` to sprint",
+  "`+drop` / `-drop` — hold to continuously drop items(1 or hold_ticks-3), tap to drop 1 item. Drop from the hovered slot in a container screen. Split a stack: drop part of a stack, then `swapSlot` the remainder into a container_slot so the piles won't re-merge to remainder, wait [move to item] for pickup",
+  "`+playerList` / `-playerList` — hold to show the online-player overlay",
+  "`+advancements` / `-advancements` — toggle the advancements screen, `-advancements` has no toggle effect",
 ];
 
 // SWITCH aliases — boolean state: +x = ON, -x = OFF. Never toggles.
 const SWITCH_ALIASES = [
-  "+silent / -silent — suppress / restore mod feedback messages in chat",
-  "+freeCursor / -freeCursor — keep the OS cursor free from the game, bypass minging logic guard for experience; camera driven only by yaw/pitch aliases, pin the hovered slot to inventory slot 14 in any container screen",
+  "`+silent` / `-silent` — suppress / restore mod feedback messages in chat",
+  "`+freeCursor` / `-freeCursor` — keep the OS cursor free from the game, bypass minging logic guard for experience; camera driven only by yaw/pitch aliases, pin the hovered slot to inventory slot 14 in any container screen",
 ];
 
 // ACTION aliases — one-shot calls, no +/- form.
 const ACTION_ALIASES = [
-  "esc — close current screen; if none is open, open pause screen",
-  "closeScreen — close the current screen if there is one",
-  "cyclePerspective — cycle camera: FPS -> TPS -> TPS2",
-  "FPS / TPS / TPS2 — set camera: first person / third-person back / third-person front",
-  "toggleInventory — open the inventory if closed, close it if open",
-  "swapHand — swap main hand and offhand items",
-  "pickItem — select the hotbar slot if one matches the targeted block/entity, otherwise try move(by SWAP) an item stack that matches the targeted block/entity in your inventory to the selected slot",
-  "reloadCFG — reload the cfg file",
-  "unloadCFGAliases / unloadCFGVars / unloadCFGAll — unload aliases / variables previously autoloaded from the cfg (runtime-created ones are kept)",
-  "builtinShutdown — shut the game down",
+  "`esc` — close current screen; if none is open, open pause screen",
+  "`closeScreen` — close the current screen if there is one",
+  "`cyclePerspective` — cycle camera: `FPS` -> `TPS` -> `TPS2`",
+  "`FPS` / `TPS` / `TPS2` — set camera: first person / third-person back / third-person front",
+  "`toggleInventory` — open the inventory if closed, close it if open",
+  "`swapHand` — swap main hand and offhand items",
+  "`pickItem` — select the hotbar slot if one matches the targeted block/entity, otherwise try move(by SWAP) an item stack that matches the targeted block/entity in your inventory to the selected slot",
+  "`reloadCFG` — reload the cfg file",
+  "`unloadCFGAliases` / `unloadCFGVars` / `unloadCFGAll` — unload aliases / variables previously autoloaded from the cfg (runtime-created ones are kept)",
+  "`builtinShutdown` — shut the game down",
 ];
 
 // COMMAND aliases — take arguments (backslash-separated).
 const COMMAND_ALIASES = [
-  "slot\\1-9 — select hotbar slot (works on/not on screen)",
-  "wait\\ticks — defer the rest of the chain by N client ticks (N >= 0), wait\\0 NOP",
-  "yaw\\deg / pitch\\deg — rotate the camera by deg",
-  "setYaw\\deg — set absolute yaw",
-  "setPitch\\deg — set absolute pitch, -90 <= deg <= 90",
-  "swapSlot\\a\\b or swapSlot\\a — SWAP(not implemented by left click event) two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand, `cN` Nth slot of a container menu. `cN` is valid on container screen if Nth slot exists. Works on container screen when `cN` or `cN` var is included. Works whether or not on screen when `cN` or `cN` var is not included. Arg order not matter. Examples: swapSlot\\1\\c2",
-  "applyRecipe\\query — apply an unlocked craftable recipe into the crafting grid on screen (by recipe book event); NO crafting performed. query = result-item id ('minecraft:torch' or 'torch') or a case-insensitive locale-name substring ('iron sword'). Errors go to the local game chat. See also the listRecipes tool",
-  "say\\text — send a chat message to server",
-  "localSay\\text — client-side-only chat message (never sent to server)",
-  "sendCommand\\cmd — send a server command (no leading slash)",
-  "log\\text — append text to the mod log",
-  "var\\name\\source — store a number for use as an arg. sources: hotbarSlot, yaw, pitch, itemsOfSlot0-9 (0=offhand, 1-9=hotbar) (stack count), a literal number, or specially c<N> which is in a different map that only swapSlot could access as a container_slot reference.",
-  "alias\\\"name definition...\" — define an alias (quoted arg, or ';' repacing space arg). Dynamic alias definition during alias execution",
-  "builtinRunAlias\\name — run a alias by name (support optional \\args)(not support inline multi-alias chain)",
-  "reapply\\action — re-sync all held key alias to game's KeyMapping after a screen transition. Actions: attack, use, forward, back, left, right, jump, sneak, sprint, drop, playerList. Make most actions possible to beat the vanilla releaseAll() on setScreen event (make sure reapply is deferred after the setScreen event), +attack and +use have builtin guard to avoid this bypass for safety",
+  "`slot\\N` — select hotbar slot N(1-9) (works on/not on screen)",
+  "`wait\\N` — defer the rest of the chain by N client ticks (N >= 0), `wait\\0` NOP",
+  "`yaw\\deg` / `pitch\\deg` — rotate the camera by deg",
+  "`setYaw\\deg` — set absolute yaw",
+  "`setPitch\\deg` — set absolute pitch, -90 <= deg <= 90",
+  "`swapSlot\\a\\b` or `swapSlot\\a` — SWAP(not implemented by left click event) two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand, `cN` Nth slot of a container menu. `cN` is valid on container screen if Nth slot exists. Works on container screen when `cN` or `cN` var is included. Works whether or not on screen when `cN` or `cN` var is not included. Arg order not matter. Examples: `swapSlot\\1\\c2`",
+  '`applyRecipe\\query` — apply an unlocked craftable recipe into the crafting grid on screen (by recipe book event); NO crafting performed. query = result-item id ("minecraft:torch" or "torch") or a case-insensitive locale-name substring ("iron sword"). Errors go to the local game chat. See also the `listRecipes` tool',
+  "`say\\text` — send a chat message to server",
+  "`localSay\\text` — client-side-only chat message (never sent to server)",
+  "`sendCommand\\cmd` — send a server command (no leading slash)",
+  "`log\\text` — append text to the mod log",
+  "`var\\name\\source` — store a number for use as an arg. sources: `hotbarSlot`, `yaw`, `pitch`, `itemsOfSlotN` (N=0-9, 0=offhand, 1-9=hotbar) (stack count), a literal number, or specially `cN` which is in a different map that only `swapSlot` could access as a container_slot reference.",
+  "`alias\\name_with_definition` — define or redefine an alias (\" quoted arg, or ';' repacing space arg) during alias (chain) execution",
+  "`builtinRunAlias\\name` — run a alias by name (support optional \\args)(not support inline multi-alias chain)",
+  "`reapply\\action` — re-sync all held key alias to game's KeyMapping after a screen transition. Actions: `attack`, `use`, `forward`, `back`, `left`, `right`, `jump`, `sneak`, `sprint`, `drop`, `playerList`. Make most actions possible to beat the vanilla releaseAll() on setScreen event (make sure reapply is deferred after the setScreen event), `+attack` and `+use` have builtin guard to avoid this bypass for safety",
 ];
 
 const RUNALIAS_DESCRIPTION =
@@ -117,7 +117,7 @@ const RUNALIAS_DESCRIPTION =
   ACTION_ALIASES.join("; ") +
   ". COMMAND ALIASES (backslash separates args): " +
   COMMAND_ALIASES.join("; ") +
-  ". RETURNS the standard envelope: the state diff is captured BEFORE execution, or AFTER the nap when the nap arg is given.";
+  ". RETURNS the standard envelope: the state diff captured BEFORE execution, or AFTER the nap when the nap arg is given.";
 
 const TOOLS = [
   {
@@ -125,7 +125,7 @@ const TOOLS = [
     description:
       "Get a full snapshot of the current game state and drain all message channels. " +
       "The envelope's tick counts client ticks since world join (-1 when not in a world). " +
-      "Prefer reading the incremental state diffs attached to every other tool response over polling getState repeatedly.",
+      "Prefer reading the incremental state diffs attached to every other tool response over polling 'getState' repeatedly.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
@@ -143,12 +143,12 @@ const TOOLS = [
         def: {
           type: "string",
           description:
-            'Alias chain definition of 0 or more alias(es). Space for alias(with arg) separator, backslash for alias_name-arg separator or arg-arg separator, \\"-quoted multi-word args: e.g. say\\"hello world". Semicolon for alias\'s (the alias named as `alias`) extra separator: e.g. "alias\\newAlias;+forward;wait\\20;-forward"',
+            'Alias chain definition of 0 or more alias(es). Space for alias(with arg) separator, backslash for alias_name-arg separator or arg-arg separator, " quotes multi-word arg preventing space inside to be treated as alias(with arg) separator: e.g. `say\\"hello world"`. Semicolon for alias\'s (the alias named as `alias`) extra separator: e.g. `alias\\newAlias;+forward;wait\\20;-forward`',
         },
         nap: {
           type: "integer",
           description:
-            "Take a nap: defer the tool call's response by N client ticks (integer, same unit as the wait\\N alias). The alias chain runs immediately; the response then blocks until N client ticks elapsed in game and returns the standard envelope captured AFTER the nap. WARNING: game KEEPS RUNNING while you nap, and you can neither react to anything happening nor poll info from game during nap until the api returns; DO NOT nap unless you have to skip safe boring time.",
+            "Take a nap: defer the tool call's response by N client ticks (integer, same unit as the wait\\N alias). The alias chain runs immediately; the response then blocks until N client ticks elapsed in game and returns the standard envelope captured AFTER the nap. WARNING: game KEEPS RUNNING while you nap, and you can neither react to anything happening nor poll info from game during nap until the api returns; DO NOT nap long(> 2 ticks) unless you have to skip **safe** boring time.",
         },
       },
       required: ["def"],
@@ -158,9 +158,8 @@ const TOOLS = [
     name: "defineAlias",
     description:
       "Define a new alias. " +
-      "'def' uses the exact same chain syntax as runAlias. " +
-      "Alias names must be single words not starting with a number. " +
-      "Cannot overwrite builtin aliases (+attack, slot, ...). " +
+      "Alias names must be single words. " +
+      "Cannot overwrite builtin aliases (`+attack`, `slot`, ...). " +
       "Returns the standard envelope.",
     inputSchema: {
       type: "object",
@@ -172,7 +171,7 @@ const TOOLS = [
         def: {
           type: "string",
           description:
-            "Alias definition string (chain syntax, same as runAlias).",
+            "Alias definition string (chain syntax, same as 'runAlias').",
         },
       },
       required: ["name", "def"],
@@ -192,7 +191,7 @@ const TOOLS = [
     name: "writeCFG",
     description:
       "Overwrite the cfg file with new content and immediately reload it. " +
-      "Same line format as readCFG. NOTE: reloading only adds/overwrites. Put 'runAlias unloadCFGAll +freeCursor' as the " +
+      "Same line format as 'readCFG'. NOTE: reloading only adds/overwrites. Put \"runAlias unloadCFGAll +freeCursor\" as the " +
       "first line, then the cfg content to write. " +
       "Returns the standard envelope.",
     inputSchema: {
@@ -210,10 +209,10 @@ const TOOLS = [
     name: "listRecipes",
     description:
       "List recipes unlocked in the recipe book. Only works while a recipe-book screen is open (player inventory via toggleInventory, crafting table, furnace, ...). " +
-      "Without 'queries': returns recipes learned since the previous listRecipes call (a diff — the first call after joining the world returns everything). " +
+      "Without 'queries': returns recipes learned since the previous 'listRecipes' call (a diff — the first call after joining the world returns everything). " +
       "With 'queries' (result-item ids like 'minecraft:torch' or 'torch', or locale-name substrings like 'iron sword'): every query is answered independently — matches land in 'recipes', per-query failures in 'recipe_errors'. " +
       "Entries: {name, item, craftable}. craftable=true means the ingredients are in your inventory right now. " +
-      "Returns the standard envelope plus recipes/recipe_errors (see the getState description).",
+      "Returns the standard envelope plus recipes/recipe_errors (see the 'getState' description).",
     inputSchema: {
       type: "object",
       properties: {

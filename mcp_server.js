@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * MCP stdio bridge for BindAliasPlus mod (Node.js version).
+ * MCP stdio bridge for BindAlias mod (Node.js version).
  *
  * Connects to the mod's HTTP API (default 127.0.0.1:25575; override with
  * `--port N` or `--port=N`) and exposes 7 tools to AI agents via the Model
@@ -35,7 +35,7 @@ function parsePort() {
 const API_BASE = "http://127.0.0.1:" + parsePort();
 
 // ===========================================================================
-// BindAliasPlus alias-language reference.
+// BindAlias alias-language reference.
 // Embedded into the runAlias tool description. Aliases are grouped into four
 // behavior types:
 //   KEY aliases     +x holds a vanilla key, -x releases it (keybind simulation)
@@ -83,7 +83,8 @@ const ACTION_ALIASES = [
   "`swapHand` — swap main hand and offhand items",
   "`pickItem` — select the hotbar slot if one matches the targeted block/entity, otherwise try move(by SWAP) an item stack that matches the targeted block/entity in your inventory to the selected slot",
   "`reloadCFG` — reload the cfg file",
-  "`unloadCFGAliases` / `unloadCFGVars` / `unloadCFGAll` — unload aliases / variables previously autoloaded from the cfg (runtime-created ones are kept)",
+  "`unloadCFGAliases` / `unloadCFGVars` / `unloadCFGAll` — unload aliases / variables previously autoloaded from the cfg (user-created and builtin ones are kept)",
+  "`unloadUserAliases` / `unloadUserVars` / `unloadUserAll` — unload aliases / variables that were created at runtime (cfg-loaded and builtin ones are kept)",
   "`builtinShutdown` — shut the game down",
 ];
 
@@ -107,7 +108,7 @@ const COMMAND_ALIASES = [
 ];
 
 const RUNALIAS_DESCRIPTION =
-  "Execute a chain of BindAliasPlus aliases (key/macro automation inside the running game). " +
+  "Execute a chain of BindAlias aliases (key/macro automation inside the running game). " +
   ALIAS_RULES.join(" ") +
   " KEY ALIASES: " +
   KEY_ALIASES.join("; ") +
@@ -190,7 +191,7 @@ const TOOLS = [
     name: "writeCFG",
     description:
       "Overwrite the cfg file with new content and immediately reload it. " +
-      "Same line format as 'readCFG'. NOTE: reloading only adds/overwrites. Put \"runAlias unloadCFGAll +freeCursor\" as the " +
+      "Same line format as 'readCFG'. NOTE: reloading only adds/overwrites. Put \"runAlias unloadCFGAll unloadUserAll +freeCursor\" as the " +
       "first line, then the cfg content to write. " +
       "Returns the standard envelope.",
     inputSchema: {
@@ -499,7 +500,7 @@ function handleLine(line) {
       makeResponse(id, {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "bind-alias-plus-mcp", version: "2.0.0" },
+        serverInfo: { name: "bind-alias-mcp", version: "2.0.0" },
       }),
     );
   } else if (method === "ping") {

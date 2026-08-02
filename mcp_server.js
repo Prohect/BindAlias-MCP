@@ -1,15 +1,6 @@
 #!/usr/bin/env node
 /**
- * MCP stdio bridge for BindAlias mod (Node.js version).
- *
- * Connects to the mod's HTTP API (default 127.0.0.1:25575; override with
- * `--port N` or `--port=N`) and exposes 7 tools to AI agents via the Model
- * Context Protocol (JSON-RPC 2.0 on stdio).
- *
- * Usage:
- *     node mcp_server.js [--port 25575]
- *
- * The mod must be running with the MCP HTTP server active.
+ * MCP stdio bridge for BindAlias mod.
  */
 
 const http = require("http");
@@ -35,34 +26,26 @@ function parsePort() {
 const API_BASE = "http://127.0.0.1:" + parsePort();
 
 // ===========================================================================
-// BindAlias alias-language reference.
-// Embedded into the runAlias tool description. Aliases are grouped into four
-// behavior types:
-//   KEY aliases     +x holds a vanilla key, -x releases it (keybind simulation)
-//   SWITCH aliases  +x turns a state ON, -x turns it OFF (never a toggle)
-//   ACTION aliases  plain name, one immediate effect, no +/- form
-//   COMMAND aliases take \-separated arguments
-// Every rule below was verified against the running mod (MC 26.2 branch)
-// and the decompiled game sources.
+// BindAlias alias-language reference — embedded into the runAlias tool description.
 // ===========================================================================
 
 const ALIAS_RULES = [
   "SILENT FAILURES: misspelled alias_name and invalid args. ",
   "SCREENS: `+attack`/`+use`'s effects to game logic are suppressed when any screen is open. " +
-    "These aliases (+-attack, +-use, +-forward, +-back, +-left, +-right, +-jump, +-sneak, +-sprint, +-drop, +-playerList, +-advancements, `esc`, `closeScreen`, `toggleInventory`, `swapHand`, `pickItem`, `swapSlot`, `sendCommand`, `reapply`) are suppressed while a text-screen (chat, sign, book, command block) is open. " +
+    "These aliases (+-attack, +-use, +-forward, +-back, +-left, +-right, +-jump, +-sneak, +-sprint, +-drop, +-playerList, +-advancements, `esc`, `closeScreen`, `toggleInventory`, `swapHand`, `pickItem`, `swapSlot`, `sendCommand`) are suppressed while a text-screen (chat, sign, book, command block) is open. " +
     "These aliases (`+forward`, `+left`, `+right`, `+back`, `+jump`, `+sneak`, `+drop`) work on non-text-screens.  All builtin +aliases would be reapplied once per screen close event. ",
-  "VARIABLES: numbers stored via the var alias can be used as numeric args (`slot`, `wait`, `yaw`, `pitch`, `setYaw`, `setPitch`, `swapSlot`), e.g. `var\\s\\hotbarSlot slot\\1 +drop -drop slot\\s`. Variables set from a `cN` source (`var\\name\\c3`) are stored in a special map only accessible by `swapSlot` and treated as container_slot references by `swapSlot`.",
+  "VARIABLES: numbers stored via the var alias can be used as numeric args (`slot`, `wait`, `yaw`, `pitch`, `setYaw`, `setPitch`, `swapSlot`), e.g. `var\\s\\hotbarSlot slot\\1 +drop -drop slot\\s`. Variables set from a `cN` source (`var\\name\\c3`) are treated as container_slot references by `swapSlot`.",
 ];
 
-// KEY aliases — simulate vanilla keybinds: +x = key down (held), -x = key up.
+// KEY aliases — +x holds, -x releases
 const KEY_ALIASES = [
-  "`+attack / -attack` — hold to mine, tap to attack (not same as left click event)",
-  "`+use / -use` — hold to use item / interact with block, tap to place block (not same as right click event)",
+  "`+attack / -attack` — hold to mine, tap to attack",
+  "`+use / -use` — hold to use item / interact with block, tap to place block",
   "`+forward` `+back` `+left` `+right` (and - forms) — hold to move",
   "`+jump` / `-jump` — hold to jump on ground, swim up in water",
   "`+sneak` / `-sneak` — hold to sneak",
   "`+sprint` / `-sprint` — hold with `+forward` to sprint",
-  "`+drop` / `-drop` — hold to continuously drop items(1 or hold_client_tick-3), tap to drop 1 item. Drop from the hovered slot in a container screen. Split a stack: drop part of a stack, then `swapSlot` the remainder into a container_slot so the piles won't re-merge to remainder, wait [move to item] for pickup",
+  "`+drop` / `-drop` — hold to continuously drop items, tap to drop 1 item. Drop from the hovered slot in a container screen. Split a stack: drop part of a stack, then `swapSlot` the remainder into a container_slot so the piles won't re-merge to remainder",
   "`+playerList` / `-playerList` — hold to show the online-player overlay",
   "`+advancements` / `-advancements` — toggle the advancements screen, `-advancements` has no toggle effect",
 ];
@@ -70,7 +53,6 @@ const KEY_ALIASES = [
 // SWITCH aliases — boolean state: +x = ON, -x = OFF. Never toggles.
 const SWITCH_ALIASES = [
   "`+silent` / `-silent` — suppress / restore mod feedback messages in chat",
-  "`+freeCursor` / `-freeCursor` — keep the OS cursor free from the game, bypass minging logic guard for experience; camera driven only by yaw/pitch aliases, pin the hovered slot to inventory slot 14 in any container screen",
 ];
 
 // ACTION aliases — one-shot calls, no +/- form.
@@ -95,16 +77,15 @@ const COMMAND_ALIASES = [
   "`yaw\\deg` / `pitch\\deg` — rotate the camera by deg",
   "`setYaw\\deg` — set absolute yaw",
   "`setPitch\\deg` — set absolute pitch, -90 <= deg <= 90",
-  "`swapSlot\\a\\b` or `swapSlot\\a` — SWAP(not implemented by left click event) two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand, `cN` Nth slot of a container menu. `cN` is valid on container screen if Nth slot exists. Works on container screen when `cN` or `cN` var is included. Works whether or not on screen when `cN` or `cN` var is not included. Arg order not matter. Examples: `swapSlot\\1\\c2`",
-  '`applyRecipe\\query` — apply an unlocked craftable recipe into the crafting grid on screen (by recipe book event); NO crafting performed. query = result-item id ("minecraft:torch" or "torch") or a case-insensitive locale-name substring ("iron sword"). Errors go to the local game chat. See also the `listRecipes` tool',
+  "`swapSlot\\a\\b` or `swapSlot\\a` — SWAP two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand, `cN` Nth slot of a container menu. `cN` is valid on container screen if Nth slot exists. Works on container screen when `cN` or `cN` var is included. Works whether or not on screen when `cN` or `cN` var is not included. Arg order not matter. Examples: `swapSlot\\1\\c2`",
+  '`applyRecipe\\query` — apply an unlocked craftable recipe into the crafting grid on screen; NO crafting performed. query = result-item id ("minecraft:torch" or "torch") or a case-insensitive locale-name substring ("iron sword"). Errors go to the local game chat. See also the `listRecipes` tool',
   "`say\\text` — send a chat text to server (quote arg if needed)",
   "`localSay\\text` — client-side-only chat text (quote arg if needed)",
   "`sendCommand\\cmd` — send a command to server (no leading slash)(quote arg if needed)",
   "`log\\text` — send text to the mod log (quote arg if needed)",
-  "`var\\name\\source` — store a number for use as an arg. sources: `hotbarSlot`, `yaw`, `pitch`, `itemsOfSlotN` (N=0-9, 0=offhand, 1-9=hotbar) (stack count), a literal number, or specially `cN` which is in a different map that only `swapSlot` could access as a container_slot reference.",
+  "`var\\name\\source` — store a number for use as an arg. sources: `hotbarSlot`, `yaw`, `pitch`, `itemsOfSlotN` (N=0-9, 0=offhand, 1-9=hotbar) (stack count), a literal number, or specially `cN` which is only accessible by `swapSlot` as a container_slot reference.",
   "`alias\\name_with_definition` — define or redefine an alias (\" quoted arg, or ';' repacing space arg) during alias (chain) execution",
-  "`builtinRunAlias\\name` — run a alias by name (support optional \\args)(not support inline multi-alias chain)",
-  "`reapply\\action` — re-sync all held key alias to game's KeyMapping after a screen transition. Actions: `attack`, `use`, `forward`, `back`, `left`, `right`, `jump`, `sneak`, `sprint`, `drop`, `playerList`. Make most actions possible to beat the vanilla releaseAll() on setScreen event (make sure reapply is deferred after the setScreen event), `+attack` and `+use` have builtin guard to avoid this bypass for safety",
+  "`builtinRunAlias\name` — run a alias by name (support optional \\args)(not support inline multi-alias chain)",
 ];
 
 const RUNALIAS_DESCRIPTION =
@@ -181,6 +162,7 @@ const TOOLS = [
     name: "readCFG",
     description:
       "Read the cfg file, returned as plain text. " +
+      "Requires in a singleplayer world. " +
       "cfg syntax and rules: " +
       "One command per line: alias <name> <definition>, " +
       "var <name> <source>, runAlias <def>; '#' starts a comment, a leading '/' is optional. " +
@@ -191,7 +173,8 @@ const TOOLS = [
     name: "writeCFG",
     description:
       "Overwrite the cfg file with new content and immediately reload it. " +
-      "Same line format as 'readCFG'. NOTE: reloading only adds/overwrites. Put \"runAlias unloadCFGAll unloadUserAll +freeCursor\" as the " +
+      "Requires in a singleplayer world. " +
+      "Same line format as 'readCFG'. NOTE: reloading only adds/overwrites. Put \"runAlias unloadCFGAll unloadUserAll\" as the " +
       "first line, then the cfg content to write. " +
       "Returns the standard envelope.",
     inputSchema: {
@@ -203,6 +186,43 @@ const TOOLS = [
         },
       },
       required: ["content"],
+    },
+  },
+  {
+    name: "readNotes",
+    description:
+      "Read the entire content of a file. " +
+      "Requires in a singleplayer world. " +
+      "Returns {\"content\":\"...\"} (empty string if the file does not exist).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          description: "Plain filename (with extension) inside the agent directory. No path separators or '..' allowed.",
+        },
+      },
+      required: ["file"],
+    },
+  },
+  {
+    name: "writeNotes",
+    description:
+      "Overwrite a file. " +
+      "Requires in a singleplayer world.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          description: "Plain filename (with extension) inside the agent directory. No path separators or '..' allowed.",
+        },
+        content: {
+          type: "string",
+          description: "Full file content to write.",
+        },
+      },
+      required: ["file", "content"],
     },
   },
   {
@@ -229,8 +249,6 @@ const TOOLS = [
 ];
 
 // ---- HTTP helpers ----
-// Use encodeURIComponent (spaces → %20) to match the mod's decodePercent,
-// which does NOT convert '+' to space.
 
 function buildUrl(path, params) {
   let url = API_BASE + path;
@@ -261,9 +279,6 @@ function apiGet(path, params) {
         }
       });
     });
-    // The timeout option only emits 'timeout' on socket idleness — it does
-    // NOT abort the request. Destroy manually so the promise settles via
-    // the 'error' handler instead of hanging forever.
     req.on("timeout", () => req.destroy(new Error("request timed out")));
     req.on("error", (e) => {
       resolve({ error: "Cannot connect to mod: " + e.message });
@@ -301,20 +316,15 @@ function apiPost(path, params, body, timeoutMs) {
         });
       },
     );
-    // Same manual abort as apiGet — 'timeout' alone does not end the request.
     req.on("timeout", () => req.destroy(new Error("request timed out")));
     req.on("error", (e) => {
       resolve({ error: "Cannot connect to mod: " + e.message });
     });
-    if (bodyStr) req.write(bodyStr);
     req.end();
   });
 }
 
 // ---- MCP JSON-RPC ----
-// Use fs.writeSync(fd=1) for stdout to avoid pipe buffering on Windows.
-// process.stdout.write() can buffer when stdout is a pipe (not a TTY),
-// causing Zed's initialize handshake to time out after 60s.
 
 function send(obj) {
   fs.writeSync(1, JSON.stringify(obj) + "\n");
@@ -329,9 +339,6 @@ function makeError(id, code, message) {
 }
 
 // ---- MCP result formatting ----
-// Every tool result is normalized to { content: [...] } (plus isError on
-// failures) so the caller always gets a well-formed, readable response —
-// raw {error: ...} objects are never leaked as tool results.
 
 function errorResult(message) {
   return {
@@ -371,9 +378,6 @@ async function handleToolCall(toolName, args) {
   switch (toolName) {
     case "getFullState":
       return wrapResult(await apiGet("/state"));
-    //back compatibility with old client
-    case "getState":
-      return wrapResult(await apiGet("/state"));
 
     case "getScreenshot": {
       const result = await apiGet("/screenshot");
@@ -390,16 +394,11 @@ async function handleToolCall(toolName, args) {
     }
 
     case "runAlias": {
-      // nap is measured in client_tick and served by the mod: it runs the
-      // chain immediately, then holds the response until N client_tick
-      // elapsed and captures the envelope fresh (newest state + messages).
       const nap = Number(args.nap);
       const napTicks =
         Number.isInteger(nap) && nap >= 1 && nap <= 1200 ? nap : 0;
       const params = { def: args.def || "" };
       if (napTicks > 0) params.nap = String(napTicks);
-      // The mod answers only after the nap — the (inactivity) timeout must
-      // outlast the nap's expected wall time (20 client_tick = 1 s).
       const result = await apiPost(
         "/runAlias",
         params,
@@ -421,11 +420,8 @@ async function handleToolCall(toolName, args) {
       return wrapResult(await apiGet("/readCFG"));
 
     case "writeCFG":
-      // Content travels as a query parameter — the same as-is transport used
-      // for runAlias defs: percent-encoding only, no JSON escaping layers.
-      // The mod checks the query first and decodes %XX back to exact bytes.
       return wrapResult(
-        await apiPost("/writeCFG", { content: args.content || "" }),
+        await apiPost("/writeCFG", { content: args.content || "" }, null, 30000),
       );
 
     case "listRecipes": {
@@ -438,14 +434,25 @@ async function handleToolCall(toolName, args) {
       return wrapResult(await apiGet("/listRecipes", params));
     }
 
+    case "readNotes":
+      return wrapResult(
+        await apiGet("/readNotes", { file: args.file || "" }),
+      );
+
+    case "writeNotes":
+      return wrapResult(
+        await apiPost("/writeNotes", {
+          file: args.file || "",
+          content: args.content || "",
+        }, null, 30000),
+      );
+
     default:
       return errorResult("unknown tool: " + toolName);
   }
 }
 
 // ---- Main ----
-// Use raw stdin instead of readline — on Windows pipes, readline may not
-// emit "line" events reliably when the parent process keeps stdin open.
 
 let stdinBuffer = "";
 
@@ -500,7 +507,7 @@ function handleLine(line) {
       makeResponse(id, {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "bind-alias-mcp", version: "2.0.0" },
+        serverInfo: { name: "bind-alias-mcp", version: "2.1.0" },
       }),
     );
   } else if (method === "ping") {

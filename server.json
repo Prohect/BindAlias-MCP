@@ -24,28 +24,40 @@
   ],
   "tools": [
     {
-      "name": "getState",
-      "description": "Get Minecraft game state: screen, world, dimension, player pos/rot, health, held item. Returns JSON."
+      "name": "runAlias",
+      "description": "Execute a chain of aliases against the running game. SILENT FAILURES: an unknown alias name or invalid args fails that step with no thrown error. Returns the standard envelope: the state diff captured before execution, or after the nap when `nap` is given."
+    },
+    {
+      "name": "getFullState",
+      "description": "Get full state and drain messages."
     },
     {
       "name": "getScreenshot",
-      "description": "Take a Minecraft screenshot and return it as a base64-encoded PNG with path and name."
-    },
-    {
-      "name": "runAlias",
-      "description": "Execute a registered BindAlias alias. 34+ argless + 18 arg-based aliases. Returns {ok: true}."
+      "description": "Screenshot, and standard envelope."
     },
     {
       "name": "defineAlias",
-      "description": "Define a new alias via /alias command. Requires being in a world. Returns {ok: true}."
+      "description": "Define a new alias. Returns the standard envelope."
     },
     {
       "name": "readCFG",
-      "description": "Read the raw content of bind-alias.cfg. Returns {content: '...'}."
+      "description": "Read the cfg file, returned as plain text. cfg syntax: one command(optional leading '/') per line — alias <name> <definition>, var <name> <source>, runAlias <def>; '#' starts a comment. Read it to discover the currently defined custom aliases/variables — the live capability catalog beyond the builtins."
     },
     {
       "name": "writeCFG",
-      "description": "Overwrite bind-alias.cfg with new content and reload it. Returns {ok: true}."
+      "description": "Overwrite the cfg file with new content and immediately reload it. Same line format as 'readCFG'. Reloading only adds/overwrites — put \"runAlias unloadCFGAll\" as the first line to clear stale entries before the new content. Returns the standard envelope."
+    },
+    {
+      "name": "readNotes",
+      "description": "Read the entire content of a file. Returns {\"content\":\"...\"} (empty string if the file does not exist)."
+    },
+    {
+      "name": "writeNotes",
+      "description": "Write (create or overwrite) a file."
+    },
+    {
+      "name": "listRecipes",
+      "description": "List recipes unlocked in the recipe book. Only works while a recipe-book screen is open (player inventory via toggleInventory, crafting table, furnace, ...). Without 'queries': returns recipes learned since the previous 'listRecipes' call (a diff — the first call after joining the world returns everything). With 'queries' (result-item ids like 'minecraft:torch' or 'torch', or locale-name substrings like 'iron sword'): every query is answered independently — matches land in 'recipes', per-query failures in 'recipe_errors'. Entries: {name, item, craftable}. craftable=true means the ingredients are in your inventory right now. Returns the standard envelope plus recipes/recipe_errors (see the 'getFullState' description)."
     }
   ],
   "homepage": "https://github.com/Prohect/BindAlias-MCP",

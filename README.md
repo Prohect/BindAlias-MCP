@@ -36,14 +36,14 @@ The server speaks MCP on stdio. Point any MCP client at it.
 
 ## Tools
 
-| Tool | What it does |
-|---|---|
-| `getFullState` | Game state snapshot: screen, world, dimension, player pos/rot, health, held item |
-| `getScreenshot` | Trigger F2 screenshot, return as base64 PNG |
-| `runAlias` | Execute a BindAlias alias (34+ argless, 18 with args) |
-| `defineAlias` | Define a new alias (requires being in a world) |
-| `readCFG` | Read `bind-alias.cfg` contents |
-| `writeCFG` | Overwrite `bind-alias.cfg` and reload |
+| Tool            | What it does                                                                     |
+| --------------- | -------------------------------------------------------------------------------- |
+| `getFullState`  | Game state snapshot: screen, world, dimension, player pos/rot, health, held item |
+| `getScreenshot` | Trigger F2 screenshot, return as base64 PNG                                      |
+| `runAlias`      | Execute a BindAlias alias (34+ argless, 18 with args)                            |
+| `defineAlias`   | Define a new alias (requires being in a world)                                   |
+| `readCFG`       | Read `bind-alias.cfg` contents                                                   |
+| `writeCFG`      | Overwrite `bind-alias.cfg` and reload                                            |
 
 The tool descriptions only cover the wire protocol — see the [mod docs](https://github.com/Prohect/BindAlias) and the [system prompt patch](#agent-system-prompt-patch) for the full alias reference.
 

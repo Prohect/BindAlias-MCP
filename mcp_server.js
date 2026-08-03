@@ -29,8 +29,10 @@ const API_BASE = "http://127.0.0.1:" + parsePort();
 // runAlias description — wire-protocol facts only (chain syntax lives on the
 // `def` param below). The alias catalog and gameplay semantics (which aliases
 // exist, screens/variables interplay, etc.) change with the mod and per-world
-// cfg, so they live in "PATCH TO YOUR PROJECT RULE.md" instead of here — paste
-// that into your agent's system prompt / project rules.
+// cfg, so they live in src/agent_system_prompt.md instead of here — paste
+// that into your agent's system prompt. Run src/sync_mcp_instructions.sh
+// after editing this file to refresh "src/raw api instruction.json", a preview of
+// exactly what a caller receives from tools/list.
 // ===========================================================================
 
 const RUNALIAS_DESCRIPTION =
@@ -48,12 +50,12 @@ const TOOLS = [
         def: {
           type: "string",
           description:
-            'Alias chain definition of 0 or more alias(es). Space for alias(with arg) separator, backslash for alias_name-arg separator or arg-arg separator, " quotes multi-word arg preventing space inside to be treated as alias(with arg) separator: e.g. `say\\"hello world"`. Semicolon for alias\'s (the alias named as `alias`) extra separator: e.g. `alias\\turnDown;setPitch\\90`, `alias\\turnRight;yaw\\90`',
+            'Alias chain definition. Space for alias(with arg) separator, backslash for alias_name-arg separator or arg-arg separator, " quotes multi-word arg preventing space inside to be parsed as alias(with arg) separator: e.g. `say\\"hello world"`. Semicolon for alias\'s (the alias named as `alias`) extra separator: e.g. `alias\\turnDown;setPitch\\90`, `alias\\turnRight;yaw\\90`',
         },
         nap: {
           type: "integer",
           description:
-            "Defer the tool call's response by N client_tick (same unit as the wait\\N alias). The chain runs immediately; the response then blocks until N client_tick have elapsed. The game keeps running the whole time — you cannot react to anything or poll state until the call returns.",
+            "Defer the tool call's response by N client_tick. The chain runs immediately; the response then blocks until N client_tick have elapsed. The game keeps running the whole time — you cannot react to anything or poll state until the call returns.",
         },
       },
       required: ["def"],
@@ -134,7 +136,7 @@ const TOOLS = [
   },
   {
     name: "writeNotes",
-    description: "Write (create or overwrite) a file.",
+    description: "Write a file.",
     inputSchema: {
       type: "object",
       properties: {
@@ -166,7 +168,7 @@ const TOOLS = [
           type: "array",
           items: { type: "string" },
           description:
-            "Optional list of recipe queries: result-item ids ('minecraft:torch', 'torch') or name substrings ('iron sword'). Omit to list newly unlocked recipes (diff).",
+            "Optional list of recipe queries. Omit to list newly unlocked recipes.",
         },
       },
       required: [],
@@ -441,7 +443,7 @@ function handleLine(line) {
       makeResponse(id, {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "bind-alias-mcp", version: "2.1.1" },
+        serverInfo: { name: "bind-alias-mcp", version: "2.1.0" },
       }),
     );
   } else if (method === "ping") {

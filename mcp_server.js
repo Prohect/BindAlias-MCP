@@ -26,95 +26,19 @@ function parsePort() {
 const API_BASE = "http://127.0.0.1:" + parsePort();
 
 // ===========================================================================
-// BindAlias alias-language reference — embedded into the runAlias tool description.
+// runAlias description — wire-protocol facts only (chain syntax lives on the
+// `def` param below). The alias catalog and gameplay semantics (which aliases
+// exist, screens/variables interplay, etc.) change with the mod and per-world
+// cfg, so they live in "PATCH TO YOUR PROJECT RULE.md" instead of here — paste
+// that into your agent's system prompt / project rules.
 // ===========================================================================
 
-const ALIAS_RULES = [
-  "SILENT FAILURES: misspelled alias_name and invalid args. ",
-  "SCREENS: `+attack`/`+use`'s effects to game logic are suppressed when any screen is open. " +
-    "These aliases (+-attack, +-use, +-forward, +-back, +-left, +-right, +-jump, +-sneak, +-sprint, +-drop, +-playerList, +-advancements, `esc`, `closeScreen`, `toggleInventory`, `swapHand`, `pickItem`, `swapSlot`, `sendCommand`) are suppressed while a text-screen (chat, sign, book, command block) is open. " +
-    "These aliases (`+forward`, `+left`, `+right`, `+back`, `+jump`, `+sneak`, `+drop`) work on non-text-screens.  All builtin +aliases would be reapplied once per screen close event. ",
-  "VARIABLES: numbers stored via the var alias can be used as numeric args (`slot`, `wait`, `yaw`, `pitch`, `setYaw`, `setPitch`, `swapSlot`), e.g. `var\\s\\hotbarSlot slot\\1 +drop -drop slot\\s`. Variables set from a `cN` source (`var\\name\\c3`) are treated as container_slot references by `swapSlot`.",
-];
-
-// KEY aliases — +x holds, -x releases
-const KEY_ALIASES = [
-  "`+attack / -attack` — hold to mine, tap to attack",
-  "`+use / -use` — hold to use item / interact with block, tap to place block",
-  "`+forward` `+back` `+left` `+right` (and - forms) — hold to move",
-  "`+jump` / `-jump` — hold to jump on ground, swim up in water",
-  "`+sneak` / `-sneak` — hold to sneak",
-  "`+sprint` / `-sprint` — hold with `+forward` to sprint",
-  "`+drop` / `-drop` — hold to continuously drop items, tap to drop 1 item. Drop from the hovered slot in a container screen. Split a stack: drop part of a stack, then `swapSlot` the remainder into a container_slot so the piles won't re-merge to remainder",
-  "`+playerList` / `-playerList` — hold to show the online-player overlay",
-  "`+advancements` / `-advancements` — toggle the advancements screen, `-advancements` has no toggle effect",
-];
-
-// SWITCH aliases — boolean state: +x = ON, -x = OFF. Never toggles.
-const SWITCH_ALIASES = [
-  "`+silent` / `-silent` — suppress / restore mod feedback messages in chat",
-];
-
-// ACTION aliases — one-shot calls, no +/- form.
-const ACTION_ALIASES = [
-  "`esc` — close current screen; if none is open, open pause screen",
-  "`closeScreen` — close the current screen if there is one",
-  "`cyclePerspective` — cycle camera: `FPS` -> `TPS` -> `TPS2`",
-  "`FPS` / `TPS` / `TPS2` — set camera: first person / third-person back / third-person front",
-  "`toggleInventory` — open the inventory if closed, close it if open",
-  "`swapHand` — swap main hand and offhand items",
-  "`pickItem` — select the hotbar slot if one matches the targeted block/entity, otherwise try move(by SWAP) an item stack that matches the targeted block/entity in your inventory to the selected slot",
-  "`reloadCFG` — reload the cfg file",
-  "`unloadCFGAliases` / `unloadCFGVars` / `unloadCFGAll` — unload aliases / variables previously autoloaded from the cfg (user-created and builtin ones are kept)",
-  "`unloadUserAliases` / `unloadUserVars` / `unloadUserAll` — unload aliases / variables that were created at runtime (cfg-loaded and builtin ones are kept)",
-  "`builtinShutdown` — shut the game down",
-];
-
-// COMMAND aliases — take arguments (backslash-separated).
-const COMMAND_ALIASES = [
-  "`slot\\N` — select hotbar slot N(1-9) (works on/not on screen)",
-  "`wait\\N` — defer the rest of the chain by N client_tick (N >= 0), `wait\\0` NOP",
-  "`yaw\\deg` / `pitch\\deg` — rotate the camera by deg",
-  "`setYaw\\deg` — set absolute yaw",
-  "`setPitch\\deg` — set absolute pitch, -90 <= deg <= 90",
-  "`swapSlot\\a\\b` or `swapSlot\\a` — SWAP two item stacks (1-arg form swaps with the selected hotbar slot). Slots: 1-9 hotbar, 10-36 inventory, 37 feet, 38 legs, 39 chest, 40 head, 41 offhand, `cN` Nth slot of a container menu. `cN` is valid on container screen if Nth slot exists. Works on container screen when `cN` or `cN` var is included. Works whether or not on screen when `cN` or `cN` var is not included. Arg order not matter. Examples: `swapSlot\\1\\c2`",
-  '`applyRecipe\\query` — apply an unlocked craftable recipe into the crafting grid on screen; NO crafting performed. query = result-item id ("minecraft:torch" or "torch") or a case-insensitive locale-name substring ("iron sword"). Errors go to the local game chat. See also the `listRecipes` tool',
-  "`say\\text` — send a chat text to server (quote arg if needed)",
-  "`localSay\\text` — client-side-only chat text (quote arg if needed)",
-  "`sendCommand\\cmd` — send a command to server (no leading slash)(quote arg if needed)",
-  "`log\\text` — send text to the mod log (quote arg if needed)",
-  "`var\\name\\source` — store a number for use as an arg. sources: `hotbarSlot`, `yaw`, `pitch`, `itemsOfSlotN` (N=0-9, 0=offhand, 1-9=hotbar) (stack count), a literal number, or specially `cN` which is only accessible by `swapSlot` as a container_slot reference.",
-  "`alias\\name_with_definition` — define or redefine an alias (\" quoted arg, or ';' repacing space arg) during alias (chain) execution",
-  "`builtinRunAlias\name` — run a alias by name (support optional \\args)(not support inline multi-alias chain)",
-];
-
 const RUNALIAS_DESCRIPTION =
-  "Execute a chain of BindAlias aliases (key/macro automation inside the running game). " +
-  ALIAS_RULES.join(" ") +
-  " KEY ALIASES: " +
-  KEY_ALIASES.join("; ") +
-  ". SWITCH ALIASES (+x ON, -x OFF): " +
-  SWITCH_ALIASES.join("; ") +
-  ". ACTION ALIASES (one-shot): " +
-  ACTION_ALIASES.join("; ") +
-  ". COMMAND ALIASES (backslash separates args): " +
-  COMMAND_ALIASES.join("; ") +
-  ". RETURNS the standard envelope: the state diff captured BEFORE execution, or AFTER the nap when the nap arg is given.";
+  "Execute a chain of aliases against the running game. " +
+  "SILENT FAILURES: an unknown alias name or invalid args fails that step with no thrown error. " +
+  "Returns the standard envelope: the state diff captured before execution, or after the nap when `nap` is given.";
 
 const TOOLS = [
-  {
-    name: "getFullState",
-    description:
-      "Get a full snapshot of the current game state and drain all message channels. " +
-      "Prefer reading the standard envelope (state diffs) attached to other tool response ('runAlias', 'getScreenshot', 'defineAlias' with OP needed or NOP) over polling 'getFullState'.",
-    inputSchema: { type: "object", properties: {}, required: [] },
-  },
-  {
-    name: "getScreenshot",
-    description:
-      "Take an immediate in-game screenshot and return it as a PNG image, plus the standard envelope. Fails when not in a world.",
-    inputSchema: { type: "object", properties: {}, required: [] },
-  },
   {
     name: "runAlias",
     description: RUNALIAS_DESCRIPTION,
@@ -129,19 +53,25 @@ const TOOLS = [
         nap: {
           type: "integer",
           description:
-            "Take a nap: defer the tool call's response by N client_tick (integer, same unit as the wait\\N alias). The alias chain runs immediately; the response then blocks until N client_tick elapsed in game and returns the standard envelope captured AFTER the nap. WARNING: game KEEPS RUNNING while you nap, and you can neither react to anything happening nor poll info from game during nap until the api returns; DO NOT nap long(> 2 client_tick) unless you have to skip **safe** boring time.",
+            "Defer the tool call's response by N client_tick (same unit as the wait\\N alias). The chain runs immediately; the response then blocks until N client_tick have elapsed. The game keeps running the whole time — you cannot react to anything or poll state until the call returns.",
         },
       },
       required: ["def"],
     },
   },
   {
+    name: "getFullState",
+    description: "Get full state and drain messages.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "getScreenshot",
+    description: "Screenshot, and standard envelope.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
     name: "defineAlias",
-    description:
-      "Define a new alias. " +
-      "Alias names must be single words. " +
-      "Cannot overwrite builtin aliases (`+attack`, `slot`, ...). " +
-      "Returns the standard envelope.",
+    description: "Define a new alias. Returns the standard envelope.",
     inputSchema: {
       type: "object",
       properties: {
@@ -162,20 +92,17 @@ const TOOLS = [
     name: "readCFG",
     description:
       "Read the cfg file, returned as plain text. " +
-      "Requires in a singleplayer world. " +
-      "cfg syntax and rules: " +
-      "One command per line: alias <name> <definition>, " +
-      "var <name> <source>, runAlias <def>; '#' starts a comment, a leading '/' is optional. " +
-      "IMPORTANT: Read cfg to understand what is defined as own capability expansions and instructions of them.",
+      "cfg syntax: one command(optional leading '/') per line — alias <name> <definition>, " +
+      "var <name> <source>, runAlias <def>; '#' starts a comment. " +
+      "Read it to discover the currently defined custom aliases/variables — the live capability catalog beyond the builtins.",
     inputSchema: { type: "object", properties: {}, required: [] },
   },
   {
     name: "writeCFG",
     description:
       "Overwrite the cfg file with new content and immediately reload it. " +
-      "Requires in a singleplayer world. " +
-      "Same line format as 'readCFG'. NOTE: reloading only adds/overwrites. Put \"runAlias unloadCFGAll unloadUserAll\" as the " +
-      "first line, then the cfg content to write. " +
+      "Same line format as 'readCFG'. Reloading only adds/overwrites — put \"runAlias unloadCFGAll\" as the " +
+      "first line to clear stale entries before the new content. " +
       "Returns the standard envelope.",
     inputSchema: {
       type: "object",
@@ -192,14 +119,14 @@ const TOOLS = [
     name: "readNotes",
     description:
       "Read the entire content of a file. " +
-      "Requires in a singleplayer world. " +
-      "Returns {\"content\":\"...\"} (empty string if the file does not exist).",
+      'Returns {"content":"..."} (empty string if the file does not exist).',
     inputSchema: {
       type: "object",
       properties: {
         file: {
           type: "string",
-          description: "Plain filename (with extension) inside the agent directory. No path separators or '..' allowed.",
+          description:
+            "Plain filename (with extension) inside the agent directory. No path separators or '..' allowed.",
         },
       },
       required: ["file"],
@@ -207,15 +134,14 @@ const TOOLS = [
   },
   {
     name: "writeNotes",
-    description:
-      "Overwrite a file. " +
-      "Requires in a singleplayer world.",
+    description: "Write (create or overwrite) a file.",
     inputSchema: {
       type: "object",
       properties: {
         file: {
           type: "string",
-          description: "Plain filename (with extension) inside the agent directory. No path separators or '..' allowed.",
+          description:
+            "Plain filename (with extension) inside the agent directory. No path separators or '..' allowed.",
         },
         content: {
           type: "string",
@@ -421,7 +347,12 @@ async function handleToolCall(toolName, args) {
 
     case "writeCFG":
       return wrapResult(
-        await apiPost("/writeCFG", { content: args.content || "" }, null, 30000),
+        await apiPost(
+          "/writeCFG",
+          { content: args.content || "" },
+          null,
+          30000,
+        ),
       );
 
     case "listRecipes": {
@@ -435,16 +366,19 @@ async function handleToolCall(toolName, args) {
     }
 
     case "readNotes":
-      return wrapResult(
-        await apiGet("/readNotes", { file: args.file || "" }),
-      );
+      return wrapResult(await apiGet("/readNotes", { file: args.file || "" }));
 
     case "writeNotes":
       return wrapResult(
-        await apiPost("/writeNotes", {
-          file: args.file || "",
-          content: args.content || "",
-        }, null, 30000),
+        await apiPost(
+          "/writeNotes",
+          {
+            file: args.file || "",
+            content: args.content || "",
+          },
+          null,
+          30000,
+        ),
       );
 
     default:

@@ -1,16 +1,16 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.Prohect/bind-alias-plus-mcp",
-  "slug": "io.github.Prohect/bind-alias-plus-mcp",
-  "description": "MCP bridge for BindAliasPlus Minecraft mod: game state, screenshots, aliases, and config editing.",
-  "version": "1.0.3",
+  "name": "io.github.Prohect/bind-alias-mcp",
+  "slug": "io.github.Prohect/bind-alias-mcp",
+  "description": "MCP bridge for BindAlias Minecraft mod: game state, screenshots, aliases, and config editing.",
+  "version": "1.0.4",
   "packages": [
     {
       "registryType": "npm",
-      "packageName": "bind-alias-plus-mcp",
-      "entrypoint": "bind-alias-plus-mcp",
-      "identifier": "bind-alias-plus-mcp",
-      "version": "1.0.3",
+      "packageName": "bind-alias-mcp",
+      "entrypoint": "bind-alias-mcp",
+      "identifier": "bind-alias-mcp",
+      "version": "1.0.4",
       "transport": {
         "type": "stdio"
       }
@@ -18,8 +18,8 @@
   ],
   "runtimeDependencies": [
     {
-      "name": "Minecraft with BindAliasPlus mod",
-      "url": "https://github.com/Prohect/BindAliasPlus"
+      "name": "Minecraft with BindAlias mod",
+      "url": "https://github.com/Prohect/BindAlias"
     }
   ],
   "tools": [
@@ -33,7 +33,7 @@
     },
     {
       "name": "runAlias",
-      "description": "Execute a registered BindAliasPlus alias. 34+ argless + 18 arg-based aliases. Returns {ok: true}."
+      "description": "Execute a registered BindAlias alias. 34+ argless + 18 arg-based aliases. Returns {ok: true}."
     },
     {
       "name": "defineAlias",
@@ -41,17 +41,17 @@
     },
     {
       "name": "readCFG",
-      "description": "Read the raw content of bind-alias-plus.cfg. Returns {content: '...'}."
+      "description": "Read the raw content of bind-alias.cfg. Returns {content: '...'}."
     },
     {
       "name": "writeCFG",
-      "description": "Overwrite bind-alias-plus.cfg with new content and reload it. Returns {ok: true}."
+      "description": "Overwrite bind-alias.cfg with new content and reload it. Returns {ok: true}."
     }
   ],
-  "homepage": "https://github.com/Prohect/BindAliasPlus-MCP",
+  "homepage": "https://github.com/Prohect/BindAlias-MCP",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Prohect/BindAliasPlus-MCP",
+    "url": "https://github.com/Prohect/BindAlias-MCP",
     "source": "github"
   },
   "authors": [

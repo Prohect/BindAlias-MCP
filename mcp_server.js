@@ -441,7 +441,7 @@ function handleLine(line) {
       makeResponse(id, {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "bind-alias-mcp", version: "2.1.0" },
+        serverInfo: { name: "bind-alias-mcp", version: "2.1.1" },
       }),
     );
   } else if (method === "ping") {

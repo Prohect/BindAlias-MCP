@@ -40,6 +40,18 @@ const RUNALIAS_DESCRIPTION =
   "SILENT FAILURES: an unknown alias name or invalid args fails that step with no thrown error. " +
   "Returns the standard envelope: the state diff captured before execution, or after the nap when `nap` is given.";
 
+// Shared optional params for every tool that returns the standard envelope.
+const VERBOSE_PARAM = {
+  type: "boolean",
+  description:
+    "Optional (default false). When true, the envelope's state is the FULL snapshot instead of the diff.",
+};
+const NAP_PARAM = {
+  type: "integer",
+  description:
+    "Optional (1-1200). Defer the tool call's response by N client_tick: the action runs immediately, but the envelope is captured only after N client_tick have elapsed. The game keeps running the whole time — you cannot react to anything or poll state until the call returns. N >= 10 fast-forwards a singleplayer world (~20 tps) for the nap.",
+};
+
 const TOOLS = [
   {
     name: "runAlias",
@@ -50,26 +62,22 @@ const TOOLS = [
         def: {
           type: "string",
           description:
-            'Alias chain definition. Space for alias(with arg) separator, backslash for alias_name-arg separator or arg-arg separator, " quotes multi-word arg preventing space inside to be parsed as alias(with arg) separator: e.g. `say\\"hello world"`. Semicolon for alias\'s (the alias named as `alias`) extra separator: e.g. `alias\\turnDown;setPitch\\90`, `alias\\turnRight;yaw\\90`',
+            "Alias chain definition. Space(' ') for alias(with arg) separator, slash('/') for alias_name-arg separator or arg-arg separator, quote('\"') quotes multi-word arg preventing space inside to be parsed as alias(with arg) separator: e.g. `say/\"hello world\"`. Semicolon for alias's (the alias named as `alias`) extra separator: e.g. `alias/turnDown;setPitch/90`, `alias/turnRight;yaw/90`",
         },
-        nap: {
-          type: "integer",
-          description:
-            "Defer the tool call's response by N client_tick. The chain runs immediately; the response then blocks until N client_tick have elapsed. The game keeps running the whole time — you cannot react to anything or poll state until the call returns.",
-        },
+        nap: NAP_PARAM,
+        verbose: VERBOSE_PARAM,
       },
       required: ["def"],
     },
   },
   {
-    name: "getFullState",
-    description: "Get full state and drain messages.",
-    inputSchema: { type: "object", properties: {}, required: [] },
-  },
-  {
     name: "getScreenshot",
     description: "Screenshot, and standard envelope.",
-    inputSchema: { type: "object", properties: {}, required: [] },
+    inputSchema: {
+      type: "object",
+      properties: { nap: NAP_PARAM, verbose: VERBOSE_PARAM },
+      required: [],
+    },
   },
   {
     name: "defineAlias",
@@ -86,6 +94,8 @@ const TOOLS = [
           description:
             "Alias definition string (chain syntax, same as 'runAlias').",
         },
+        nap: NAP_PARAM,
+        verbose: VERBOSE_PARAM,
       },
       required: ["name", "def"],
     },
@@ -113,6 +123,8 @@ const TOOLS = [
           type: "string",
           description: "Full config file content to write.",
         },
+        nap: NAP_PARAM,
+        verbose: VERBOSE_PARAM,
       },
       required: ["content"],
     },
@@ -159,8 +171,8 @@ const TOOLS = [
       "List recipes unlocked in the recipe book. Only works while a recipe-book screen is open (player inventory via toggleInventory, crafting table, furnace, ...). " +
       "Without 'queries': returns recipes learned since the previous 'listRecipes' call (a diff — the first call after joining the world returns everything). " +
       "With 'queries' (result-item ids like 'minecraft:torch' or 'torch', or locale-name substrings like 'iron sword'): every query is answered independently — matches land in 'recipes', per-query failures in 'recipe_errors'. " +
-      "Entries: {name, item, craftable}. craftable=true means the ingredients are in your inventory right now. " +
-      "Returns the standard envelope plus recipes/recipe_errors (see the 'getFullState' description).",
+      "Entries: {name, item, craftable, placeable}. craftable=true means the ingredients are in your inventory right now; placeable=false means the open menu cannot place it (grid too small or wrong station). " +
+      "Returns the standard envelope plus recipes/recipe_errors.",
     inputSchema: {
       type: "object",
       properties: {
@@ -170,6 +182,8 @@ const TOOLS = [
           description:
             "Optional list of recipe queries. Omit to list newly unlocked recipes.",
         },
+        nap: NAP_PARAM,
+        verbose: VERBOSE_PARAM,
       },
       required: [],
     },
@@ -191,10 +205,10 @@ function buildUrl(path, params) {
   return url;
 }
 
-function apiGet(path, params) {
+function apiGet(path, params, timeoutMs) {
   const url = buildUrl(path, params);
   return new Promise((resolve) => {
-    const req = http.get(url, { timeout: 10000 }, (res) => {
+    const req = http.get(url, { timeout: timeoutMs || 10000 }, (res) => {
       let data = "";
       res.on("data", (chunk) => {
         data += chunk;
@@ -302,13 +316,22 @@ function wrapResult(result) {
   return jsonResult(result);
 }
 
+// Shared envelope plumbing: pass through the optional verbose/nap fields;
+// a nap extends the HTTP timeout (a client_tick is ~50 ms at nominal speed).
+function envelopeParams(args) {
+  const params = {};
+  if (args.verbose === true) params.verbose = "1";
+  const nap = Number(args.nap);
+  const napTicks = Number.isInteger(nap) && nap >= 1 && nap <= 1200 ? nap : 0;
+  if (napTicks > 0) params.nap = String(napTicks);
+  return { params, napTicks };
+}
+
 async function handleToolCall(toolName, args) {
   switch (toolName) {
-    case "getFullState":
-      return wrapResult(await apiGet("/state"));
-
     case "getScreenshot": {
-      const result = await apiGet("/screenshot");
+      const { params, napTicks } = envelopeParams(args);
+      const result = await apiGet("/screenshot", params, 10000 + napTicks * 50);
       if (result.error) return wrapResult(result);
       if (result.base64) {
         const { base64, ...envelope } = result;
@@ -322,11 +345,8 @@ async function handleToolCall(toolName, args) {
     }
 
     case "runAlias": {
-      const nap = Number(args.nap);
-      const napTicks =
-        Number.isInteger(nap) && nap >= 1 && nap <= 1200 ? nap : 0;
-      const params = { def: args.def || "" };
-      if (napTicks > 0) params.nap = String(napTicks);
+      const { params, napTicks } = envelopeParams(args);
+      params.def = args.def || "";
       const result = await apiPost(
         "/runAlias",
         params,
@@ -337,34 +357,38 @@ async function handleToolCall(toolName, args) {
     }
 
     case "defineAlias": {
-      const result = await apiPost("/defineAlias", {
-        name: args.name || "",
-        def: args.def || "",
-      });
+      const { params, napTicks } = envelopeParams(args);
+      params.name = args.name || "";
+      params.def = args.def || "";
+      const result = await apiPost(
+        "/defineAlias",
+        params,
+        null,
+        10000 + napTicks * 50,
+      );
       return wrapResult(result);
     }
 
     case "readCFG":
       return wrapResult(await apiGet("/readCFG"));
 
-    case "writeCFG":
+    case "writeCFG": {
+      const { params, napTicks } = envelopeParams(args);
+      params.content = args.content || "";
       return wrapResult(
-        await apiPost(
-          "/writeCFG",
-          { content: args.content || "" },
-          null,
-          30000,
-        ),
+        await apiPost("/writeCFG", params, null, 30000 + napTicks * 50),
       );
+    }
 
     case "listRecipes": {
       let queries = args.queries;
       if (typeof queries === "string") queries = [queries];
-      const params =
-        Array.isArray(queries) && queries.length > 0
-          ? { q: queries.join(",") }
-          : null;
-      return wrapResult(await apiGet("/listRecipes", params));
+      const { params, napTicks } = envelopeParams(args);
+      if (Array.isArray(queries) && queries.length > 0)
+        params.q = queries.join(",");
+      return wrapResult(
+        await apiGet("/listRecipes", params, 10000 + napTicks * 50),
+      );
     }
 
     case "readNotes":
@@ -443,7 +467,7 @@ function handleLine(line) {
       makeResponse(id, {
         protocolVersion: "2024-11-05",
         capabilities: { tools: {} },
-        serverInfo: { name: "bind-alias-mcp", version: "2.1.0" },
+        serverInfo: { name: "bind-alias-mcp", version: "3.0.0" },
       }),
     );
   } else if (method === "ping") {
